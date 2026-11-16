@@ -14,6 +14,8 @@ Formatted-script format:
 - Scene heading: ## S<number> | INT/EXT · Location | Time period
 - Action description: natural paragraphs, no camera language
 - Dialogue: CharacterName: (state/expression) line content
-- Each scene covers 30-60 seconds of content
+- Each scene covers 10-20 seconds of content: 1-3 one-sentence action beats and at most 3 lines of dialogue
+- A line of dialogue is 12 words or fewer; cut greetings, filler, and anything the picture already shows
+- The script is for vertical short-form drama: open on the hook, land a turn every scene, and come out shorter than the source — compress, never pad
 
 Note: you must do the rewriting work yourself — do not just return instructions. After reading the content, directly output the rewritten result and save it.

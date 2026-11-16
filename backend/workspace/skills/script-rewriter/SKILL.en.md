@@ -10,8 +10,9 @@ description: Methodology and rules for rewriting a novel into a formatted script
 1. **Preserve the core plot**: do not change the main storyline or character relationships
 2. **Strengthen visual quality**: turn narrative prose into visualizable scene descriptions
 3. **Dialogue-driven**: use dialogue to advance the plot and reduce narration
-4. **Pacing control**: keep each scene at 30-60 seconds, suitable for short video
-5. **No camera language**: no shot sizes, angles, or camera moves — those belong to the storyboard-breakdown step
+4. **Pacing control**: keep each scene at 10-20 seconds — 1-3 action beats and at most 3 lines of dialogue. This is vertical short-form drama: the first scene is the hook, and every scene must turn the story
+5. **Concise by default**: one sentence per action beat; a line of dialogue is 12 words or fewer; cut greetings, small talk, repeated information, and anything the picture already shows. Narration is a last resort, one short sentence at a time
+6. **No camera language**: no shot sizes, angles, or camera moves — those belong to the storyboard-breakdown step
 
 ## Formatted-Script Format
 
@@ -36,7 +37,7 @@ Xiaoming: (looking up) Not really, just got here.
 
 ### Content-Volume Reference
 
-The formatted script is about 20-30% longer than the original content; the increase mainly comes from scene-heading markers and dialogue formatting, not from expansion writing.
+The formatted script should be no longer than the original content, and usually shorter: compress exposition into one visible action or one line. A whole episode normally plays in 60-120 seconds, which is roughly 150-300 spoken words — if the source is longer, keep the hook, the turns, and the payoff, and drop the rest. Never expand.
 
 ## Rewriting Steps
 
@@ -49,7 +50,7 @@ The formatted script is about 20-30% longer than the original content; the incre
 ## Notes
 
 - Inner monologue can be converted into character expressions/actions or voiceover
-- Split long narrative passages into multiple short scenes
+- Compress long narrative passages into a few short scenes; do not dramatize every sentence of the source
 - Make sure every scene has a clear emotional turning point
 - Keep each character's language style consistent
 - Scene numbers increase consecutively (S01, S02, S03...)
