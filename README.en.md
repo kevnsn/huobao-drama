@@ -291,6 +291,37 @@ The episode list shows the production status of every episode — click "Enter S
 
 ---
 
+## 🔌 MCP Server
+
+Lets Claude, Codex and ChatGPT drive the app: create projects, episodes, characters, scenes, props and shots, start image and video generation, check tasks, and attach images made elsewhere (`set_image`) or look at the current ones (`view_image`). The backend must be running. API keys are never returned by any tool.
+
+**Claude Code**
+
+```bash
+claude mcp add huobao -- npm --prefix /path/to/huobao-drama/backend run -s mcp
+```
+
+**Codex CLI** — add to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.huobao]
+command = "npm"
+args = ["--prefix", "/path/to/huobao-drama/backend", "run", "-s", "mcp"]
+```
+
+Codex saves generated images to disk, so ask it to call `set_image` with the image's absolute `file_path`.
+
+**ChatGPT** — the backend also serves MCP over HTTP at `/mcp`. ChatGPT needs a public HTTPS address, so set a token before exposing it:
+
+```bash
+MCP_TOKEN=choose-a-long-random-string npm --prefix backend run dev
+cloudflared tunnel --url http://localhost:5679   # or ngrok http 5679
+```
+
+In ChatGPT, turn on developer mode in the connector settings, then create a connector with the URL `https://<your-tunnel>/mcp?key=<MCP_TOKEN>` and no authentication. Images generated or uploaded in the chat can then be passed to `set_image`.
+
+Without `MCP_TOKEN` the endpoint is open to anyone who can reach the port, which is fine on localhost only. Set `HUOBAO_API` if the backend is not at `http://localhost:5679/api/v1`.
+
 ## 📦 Deployment
 
 ### 🖥️ Desktop App (recommended)

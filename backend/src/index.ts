@@ -26,6 +26,8 @@ import serverUpdate from './routes/serverUpdate.js'
 import { requestLogger, errorHandler } from './middleware/logger.js'
 import { resumeInterruptedTasks } from './services/generation.js'
 import { DATA_ROOT } from './utils/paths.js'
+import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
+import { createMcpServer } from './mcp/server.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const projectRoot = path.resolve(__dirname, '../..')
@@ -69,6 +71,18 @@ api.route('/settings', settings)
 api.route('/server-update', serverUpdate)
 
 app.route('/api/v1', api)
+
+// MCP over HTTP, for ChatGPT and other remote clients. Stateless: one server per request.
+// Reaching ChatGPT needs a public tunnel, so MCP_TOKEN guards it (Bearer header or ?key=).
+app.all('/mcp', async (c) => {
+  const token = process.env.MCP_TOKEN
+  if (token && c.req.header('authorization') !== `Bearer ${token}` && c.req.query('key') !== token) {
+    return c.json({ error: 'unauthorized' }, 401)
+  }
+  const transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true })
+  await createMcpServer(`http://localhost:${port}/api/v1`).connect(transport)
+  return transport.handleRequest(c.req.raw)
+})
 
 // Serve static files (storage)
 // 生成的图片/视频按 uuid 命名、内容不变，标记为 immutable 让浏览器长缓存
