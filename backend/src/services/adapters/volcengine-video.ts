@@ -18,7 +18,7 @@ import type {
 import { joinProviderUrl } from './url'
 
 /** 仅支持 Seedance 2.0+ 系列（前缀匹配，兼容未来 2.0.x 变体） */
-const SEEDANCE2_MODEL_PREFIX = 'doubao-seedance-2-0'
+const SEEDANCE2_MODEL_PREFIX = 'doubao-seedance-2-'
 const DEFAULT_MODEL = 'doubao-seedance-2-0-mini-260615'
 
 /** 多模态参考素材上限：图片 9、视频 3、音频 3 */
@@ -40,7 +40,7 @@ export class VolcEngineVideoAdapter implements VideoProviderAdapter {
   buildGenerateRequest(config: AIConfig, record: VideoGenerationRecord): ProviderRequest {
     const model = record.model || config.model || DEFAULT_MODEL
     if (!model.startsWith(SEEDANCE2_MODEL_PREFIX)) {
-      throw new Error(`Only Seedance 2.0 series models (${SEEDANCE2_MODEL_PREFIX}-*) are supported, got: ${model}`)
+      throw new Error(`Only Seedance 2.x series models (${SEEDANCE2_MODEL_PREFIX}-*) are supported, got: ${model}`)
     }
 
     const prompt = (record.prompt || '').trim()

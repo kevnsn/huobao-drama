@@ -5,7 +5,7 @@ import { STORAGE_ROOT } from '../utils/paths.js'
 import { ffmpeg, checkFfmpegSuite } from '../utils/ffmpeg.js'
 
 const MAX_BYTES = 15 * 1024 * 1024
-const INLINE_PROVIDERS = new Set(['volcengine', 'minimax', 'openrouter'])
+const INLINE_PROVIDERS = new Set(['volcengine', 'minimax', 'openrouter', 'anyfast'])
 
 function localAudioPath(url: string): string | null {
   if (!/^\/?static\//.test(url)) return null

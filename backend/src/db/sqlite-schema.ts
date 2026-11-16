@@ -306,6 +306,12 @@ export const sqliteSchemaStatements = [
  */
 export const stylePresetSeeds = [
   {
+    // Not the retired `live` value: that one is still removed below for installs that had it
+    name: 'Photorealistic Live-Action', value: 'realistic', sortOrder: 0,
+    prompt: 'photorealistic live-action footage, shot on a full-frame cinema camera with a 35mm prime lens, real human actors with natural skin texture, visible pores and fine facial detail, true human anatomy and proportions, natural motivated lighting with soft falloff, shallow depth of field, realistic fabric, hair and material detail, authentic real-world locations, restrained true-to-life color grade, subtle film grain, vertical short-drama framing with tight expressive close-ups, consistent actor appearance, wardrobe and lighting across shots, no illustration, no CGI look, no cartoon or anime styling',
+    description: 'Real-actor, real-camera look for high-realism short-form drama',
+  },
+  {
     name: '3D Animation', value: '3d', sortOrder: 1,
     prompt: 'high-quality 3D CG animation still, modern game-engine cinematic render, Unreal Engine and Pixar grade quality, semi-realistic stylized characters with refined facial features, clean sculpted anatomy, detailed skin shader with subtle subsurface scattering, PBR materials with crisp detailed textures, volumetric cinematic lighting with soft rim light, rich depth of field, polished film color grading, detailed environment art, sharp focus, consistent character design across shots, avoid flat lighting, avoid plastic waxy skin, avoid low-poly blurry look, avoid 2D flat cel shading, avoid anime line art',
     description: 'Game-engine 3D render with semi-realistic characters — the mainstream look for 3D short dramas',

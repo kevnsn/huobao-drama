@@ -9,7 +9,7 @@ test('volcengine video adapter only supports Seedance 2.0 models and reference m
   const adapter = read('src/services/adapters/volcengine-video.ts')
 
   // 模型白名单：仅 doubao-seedance-2-0-* 前缀
-  assert.match(adapter, /SEEDANCE2_MODEL_PREFIX = 'doubao-seedance-2-0'/)
+  assert.match(adapter, /SEEDANCE2_MODEL_PREFIX = 'doubao-seedance-2-'/)
   assert.match(adapter, /startsWith\(SEEDANCE2_MODEL_PREFIX\)/)
 
   // 只保留多模态参考：其他模式分支与历史映射已清理

@@ -175,6 +175,8 @@
   },
   "detail": {
     "head": {
+      "styleHint": "ビジュアルスタイル — 今後生成する画像と動画に適用されます",
+      "styleSwitched": "スタイルを {name} に変更しました。既存の画像と動画は再生成するまで変わりません。",
       "charCount": "{n} キャラクター",
       "sceneCount": "{n} シーン",
       "epCount": "{n} 話",
@@ -240,6 +242,8 @@
       "genImage": "画像を生成",
       "saving": "保存中…",
       "generating": "{kind}「{name}」の画像を生成中",
+      "phasePrompt": "画像プロンプトを作成中…",
+      "phaseImage": "画像を生成中…",
       "genTimeout": "{kind}「{name}」の生成がタイムアウトしました。後で更新して確認してください",
       "uploaded": "{kind}「{name}」の画像をアップロードしました",
       "needEpisodeForImage": "素材画像を生成するには、先に「エピソード一覧」で 1 話以上作成してください",

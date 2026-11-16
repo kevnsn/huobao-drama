@@ -93,7 +93,8 @@ watch(locale, checkAiConfigs)
 <style scoped>
 .shell {
   display: flex; flex-direction: column;
-  height: 100vh; overflow: hidden;
+  /* Pinned to the window and clipped (not hidden) so nothing can scroll the whole app out of view */
+  position: fixed; inset: 0; overflow: clip;
   background: var(--bg-base);
 }
 
@@ -229,5 +230,5 @@ watch(locale, checkAiConfigs)
 .config-banner-link:hover { background: var(--warn-link-hover-bg); color: var(--warn-text); }
 
 /* Content */
-.content { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+.content { flex: 1; overflow: clip; display: flex; flex-direction: column; }
 </style>

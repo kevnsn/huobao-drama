@@ -175,6 +175,8 @@
   },
   "detail": {
     "head": {
+      "styleHint": "视觉风格——对之后生成的图片和视频生效",
+      "styleSwitched": "风格已切换为 {name}。已生成的图片和视频需重新生成才会更新。",
       "charCount": "{n} 角色",
       "sceneCount": "{n} 场景",
       "epCount": "{n} 集",
@@ -240,6 +242,8 @@
       "genImage": "生成图片",
       "saving": "保存中…",
       "generating": "{kind}「{name}」图片生成中",
+      "phasePrompt": "正在撰写图片提示词…",
+      "phaseImage": "正在生成图片…",
       "genTimeout": "{kind}「{name}」生成超时，可稍后刷新查看",
       "uploaded": "{kind}「{name}」图片已上传",
       "needEpisodeForImage": "请先在「剧集列表」创建至少一集，才能生成素材图",

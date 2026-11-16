@@ -96,6 +96,16 @@ function buildProbe(serviceType: string, provider: string, baseUrl: string, mode
     }
   }
 
+  if (p === 'anyfast') {
+    // Model list: validates the API key without creating a (paid) video job
+    return {
+      method: 'GET',
+      url: joinProviderUrl(baseUrl, '/v1', '/models'),
+      headers: bearerHeaders(apiKey),
+      body: undefined,
+    }
+  }
+
   if (p === 'minimax') {
     // MiniMax 仅提供视频服务，空请求体探测鉴权/端点连通性
     return {

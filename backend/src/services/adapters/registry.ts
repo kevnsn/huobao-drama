@@ -10,6 +10,8 @@ import { MiniMaxVideoAdapter } from './minimax-video'
 import { AliyunWanVideoAdapter } from './aliyun-wan-video'
 import { CodexImageAdapter } from './codex-image'
 import { OpenRouterVideoAdapter } from './openrouter-video'
+import { OpenRouterImageAdapter } from './openrouter-image'
+import { AnyFastVideoAdapter } from './anyfast-video'
 import type { ImageProviderAdapter, VideoProviderAdapter } from './types'
 
 // 图片 Adapter 注册表
@@ -18,6 +20,7 @@ export const imageAdapters: Record<string, ImageProviderAdapter> = {
   gemini: new GeminiImageAdapter(),
   volcengine: new VolcEngineImageAdapter(),
   codex: new CodexImageAdapter(),
+  openrouter: new OpenRouterImageAdapter(),
 }
 
 // 视频 Adapter 注册表
@@ -26,6 +29,7 @@ export const videoAdapters: Record<string, VideoProviderAdapter> = {
   minimax: new MiniMaxVideoAdapter(),
   aliyun: new AliyunWanVideoAdapter(),
   openrouter: new OpenRouterVideoAdapter(),
+  anyfast: new AnyFastVideoAdapter(),
 }
 
 /**

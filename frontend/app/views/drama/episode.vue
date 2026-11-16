@@ -2122,12 +2122,14 @@ const RESOLUTION_TIERS = {
   minimax: ['720p', '1080p'],
   aliyun: ['480p', '720p', '1080p'],
   openrouter: ['480p', '720p', '1080p'],
+  anyfast: ['480p', '720p', '1080p'],
 }
 const RESOLUTION_DISPLAY = {
   volcengine: { '480p': '480p', '720p': '720p', '1080p': '720p' },
   minimax: { '480p': '768P', '720p': '768P', '1080p': '2K' },
   aliyun: { '480p': '480P', '720p': '720P', '1080p': '1080P' },
   openrouter: { '480p': '480p', '720p': '720p', '1080p': '1080p' },
+  anyfast: { '480p': '480p', '720p': '720p', '1080p': '1080p' },
 }
 const resolutionProvider = computed(() => RESOLUTION_TIERS[selectedVideoConfig.value?.provider] ? selectedVideoConfig.value.provider : 'volcengine')
 // OpenRouter: each model has its own allowed durations and resolutions (loaded from the backend)

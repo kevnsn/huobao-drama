@@ -9,7 +9,16 @@
       </button>
       <div class="head-info">
         <h1 class="page-title">{{ drama.title }}</h1>
-        <span v-if="drama.style" class="tag tag-accent">{{ drama.style }}</span>
+        <BaseSelect
+          v-if="styleOptions.length"
+          class="head-style"
+          :model-value="drama.style"
+          :options="styleOptions"
+          :searchable="false"
+          :title="t('detail.head.styleHint')"
+          @update:model-value="setDramaStyle"
+        />
+        <span v-else-if="drama.style" class="tag tag-accent">{{ drama.style }}</span>
         <div class="page-meta">
           <span class="meta-item">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -227,8 +236,13 @@
                       <div v-else class="character-portrait-empty">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                       </div>
-                      <span class="asset-cover-badge" :class="matHasImage(m) ? 'is-ready' : (isPending(m) ? 'is-pending' : '')">
-                        {{ matHasImage(m) ? t('episode.asset.portraitReady') : (isPending(m) ? t('episode.asset.portraitPending') : t('episode.asset.portraitTodo')) }}
+<div v-if="isPending(m)" class="asset-generating" role="status" aria-live="polite">
+                        <span class="ring-spinner"></span>
+                        <span class="asset-generating-label">{{ pendingLabel(m) }}</span>
+                        <span class="asset-generating-time">{{ pendingElapsed(m) }}</span>
+                      </div>
+                      <span class="asset-cover-badge" :class="isPending(m) ? 'is-pending' : (matHasImage(m) ? 'is-ready' : '')">
+                        {{ isPending(m) ? t('episode.asset.portraitPending') : (matHasImage(m) ? t('episode.asset.portraitReady') : t('episode.asset.portraitTodo')) }}
                       </span>
                     </div>
                     <div class="character-asset-head">
@@ -244,7 +258,7 @@
                       </div>
                       <button class="btn btn-sm character-gen-btn" type="button" :disabled="isPending(m)" @click.stop="generateMaterial(m)">
                         <span v-if="isPending(m)" class="ring-spinner sm"></span>
-                        {{ matHasImage(m) ? t('episode.asset.regen') : (isPending(m) ? t('episode.asset.generating') : t('episode.asset.generate')) }}
+                        {{ isPending(m) ? t('episode.asset.generating') : (matHasImage(m) ? t('episode.asset.regen') : t('episode.asset.generate')) }}
                       </button>
                       <button class="btn btn-sm" type="button" :title="t('episode.asset.uploadCharImage')" :disabled="isUploading(m)" @click.stop="uploadMaterial(m)">
                         <span v-if="isUploading(m)" class="ring-spinner sm"></span>
@@ -280,8 +294,13 @@
                     <svg v-if="g.kindKey === 'scene'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                     <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
                   </div>
-                  <span class="asset-cover-badge" :class="matHasImage(m) ? 'is-ready' : (isPending(m) ? 'is-pending' : '')">
-                    {{ matHasImage(m) ? t('episode.asset.ready') : (isPending(m) ? t('episode.asset.generating') : t('episode.asset.todo')) }}
+<div v-if="isPending(m)" class="asset-generating" role="status" aria-live="polite">
+                    <span class="ring-spinner"></span>
+                    <span class="asset-generating-label">{{ pendingLabel(m) }}</span>
+                    <span class="asset-generating-time">{{ pendingElapsed(m) }}</span>
+                  </div>
+                  <span class="asset-cover-badge" :class="isPending(m) ? 'is-pending' : (matHasImage(m) ? 'is-ready' : '')">
+                    {{ isPending(m) ? t('episode.asset.generating') : (matHasImage(m) ? t('episode.asset.ready') : t('episode.asset.todo')) }}
                   </span>
                 </div>
                 <div class="asset-body">
@@ -311,7 +330,7 @@
                   </button>
                   <button class="btn btn-sm" type="button" :disabled="isPending(m)" @click.stop="generateMaterial(m)">
                     <span v-if="isPending(m)" class="ring-spinner sm"></span>
-                    {{ matHasImage(m) ? t('episode.asset.regen') : (isPending(m) ? t('episode.asset.generating') : t('episode.asset.generate')) }}
+                    {{ isPending(m) ? t('episode.asset.generating') : (matHasImage(m) ? t('episode.asset.regen') : t('episode.asset.generate')) }}
                   </button>
                 </div>
               </div>
@@ -567,7 +586,7 @@
 import { toast } from 'vue-sonner'
 import { toastError } from '~/composables/useToast'
 import { useI18n } from 'vue-i18n'
-import { dramaAPI, episodeAPI, characterAPI, sceneAPI, propAPI, uploadAPI } from '~/composables/useApi'
+import { taskAPI, stylePresetAPI, dramaAPI, episodeAPI, characterAPI, sceneAPI, propAPI, uploadAPI } from '~/composables/useApi'
 import BaseSelect from '~/components/BaseSelect.vue'
 
 const { t, locale } = useI18n()
@@ -641,7 +660,24 @@ async function setEpisodeStatus(ep, status) {
   }
 }
 
+// Visual style can be changed after creation; it is applied when images and videos are generated
+const stylePresets = ref([])
+const styleOptions = computed(() => stylePresets.value.map(p => ({ label: p.name, value: p.value, description: p.description || '' })))
+async function setDramaStyle(style) {
+  if (!style || style === drama.value.style) return
+  const prev = drama.value.style
+  drama.value.style = style
+  try {
+    await dramaAPI.update(dramaId, { style })
+    toast.success(t('detail.head.styleSwitched', { name: stylePresets.value.find(p => p.value === style)?.name || style }))
+  } catch (e) {
+    drama.value.style = prev
+    toastError(e)
+  }
+}
+
 async function load() {
+  stylePresetAPI.list().then(list => { stylePresets.value = list || [] }).catch(() => {})
   try {
     drama.value = await dramaAPI.get(dramaId)
   } catch (e) {
@@ -749,44 +785,71 @@ const assetGroups = computed(() => {
 })
 
 function pendingKey(m) { return `${m.kindKey}:${m.id}` }
-function isPending(m) { return pendingMaterials.value.has(pendingKey(m)) }
+// Two phases: the request is in flight while the backend writes the image prompt (pendingMaterials),
+// then an image task runs (activeTasks). Tasks are read from the backend, so the state survives a
+// reload and also shows generations started from the episode workbench.
+const activeTasks = ref(new Set())
+const pendingSince = ref({})
+const clock = ref(Date.now())
+function isPending(m) { return pendingMaterials.value.has(pendingKey(m)) || activeTasks.value.has(pendingKey(m)) }
+function pendingLabel(m) {
+  return activeTasks.value.has(pendingKey(m)) ? t('detail.mat.phaseImage') : t('detail.mat.phasePrompt')
+}
+function pendingElapsed(m) {
+  const secs = Math.max(0, Math.round((clock.value - (pendingSince.value[pendingKey(m)] || clock.value)) / 1000))
+  return `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`
+}
+function taskKey(task) {
+  const id = (name) => task[`${name}Id`] ?? task[`${name}_id`]
+  return id('character') ? `character:${id('character')}` : id('scene') ? `scene:${id('scene')}` : id('prop') ? `prop:${id('prop')}` : ''
+}
 
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
+let taskTimer = null
+async function syncTasks() {
+  clearTimeout(taskTimer)
+  let tasks = []
+  try { tasks = await taskAPI.list({ type: 'image', drama_id: dramaId }) || [] } catch { return }
+  const running = new Set()
+  for (const task of tasks) {
+    const key = taskKey(task)
+    if (!key || !['pending', 'processing'].includes(task.status)) continue
+    running.add(key)
+    const created = Date.parse(task.createdAt || task.created_at || '')
+    if (!pendingSince.value[key]) pendingSince.value = { ...pendingSince.value, [key]: Number.isFinite(created) ? created : Date.now() }
+  }
+  const finished = [...activeTasks.value].filter(key => !running.has(key))
+  activeTasks.value = running
+  if (finished.length) {
+    await load()
+    for (const key of finished) {
+      const { [key]: _, ...rest } = pendingSince.value
+      pendingSince.value = rest
+      const latest = tasks.filter(task => taskKey(task) === key).sort((x, y) => y.id - x.id)[0]
+      if (latest?.status === 'failed') toastError(latest.errorMsg || latest.error_msg)
+    }
+  }
+  if (running.size) taskTimer = setTimeout(syncTasks, 2500)
+}
+const clockTimer = setInterval(() => { clock.value = Date.now() }, 1000)
+onBeforeUnmount(() => { clearTimeout(taskTimer); clearInterval(clockTimer) })
 
 async function generateMaterial(m) {
   const epId = drama.value?.episodes?.[0]?.id
   if (!epId) { toast.error(t('detail.mat.needEpisodeForImage')); return }
   const key = pendingKey(m)
-  if (pendingMaterials.value.has(key)) return
+  if (isPending(m)) return
   pendingMaterials.value = new Set(pendingMaterials.value).add(key)
+  pendingSince.value = { ...pendingSince.value, [key]: Date.now() }
   try {
     if (m.kindKey === 'character') await characterAPI.generateImage(m.id, epId)
     else if (m.kindKey === 'scene') await sceneAPI.generateImage(m.id, epId)
     else await propAPI.generateImage(m.id, epId)
-    toast.success(t('detail.mat.generating', { kind: m.kind, name: m.name }))
-    pollMaterial(m)
+    await syncTasks()
   } catch (e) {
-    pendingMaterials.value = new Set([...pendingMaterials.value].filter(k => k !== key))
     toastError(e)
+  } finally {
+    pendingMaterials.value = new Set([...pendingMaterials.value].filter(k => k !== key))
   }
-}
-
-// 生图为异步任务：轮询重新加载 drama，直到该素材 imageUrl 出现
-async function pollMaterial(m) {
-  const key = pendingKey(m)
-  for (let i = 0; i < 40; i++) {
-    await sleep(2500)
-    await load()
-    const d = drama.value
-    const list = m.kindKey === 'character' ? d?.characters : m.kindKey === 'scene' ? d?.scenes : d?.props
-    const rec = list?.find(x => x.id === m.id)
-    if (rec && matImage(rec)) {
-      pendingMaterials.value = new Set([...pendingMaterials.value].filter(k => k !== key))
-      return
-    }
-  }
-  pendingMaterials.value = new Set([...pendingMaterials.value].filter(k => k !== key))
-  toast.info(t('detail.mat.genTimeout', { kind: m.kind, name: m.name }))
 }
 
 function switchToAssets() {
@@ -922,7 +985,7 @@ async function saveEdit() {
   }
 }
 
-onMounted(load)
+onMounted(() => { load(); syncTasks() })
 </script>
 
 <style scoped>
@@ -944,6 +1007,7 @@ onMounted(load)
 }
 .head-info { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .head-action { flex-shrink: 0; }
+.head-style { width: 240px; }
 
 .back-btn {
   width: 30px; height: 30px; flex-shrink: 0;
@@ -1397,6 +1461,25 @@ onMounted(load)
   background: var(--accent-bg);
   color: var(--accent-text);
 }
+.asset-generating {
+  position: absolute; inset: 0; z-index: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  background: color-mix(in srgb, var(--bg-2) 82%, transparent);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  color: var(--text-1); overflow: hidden;
+}
+.asset-generating::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(100deg, transparent 30%, var(--accent-bg) 50%, transparent 70%);
+  transform: translateX(-100%);
+  animation: asset-shimmer 1.6s ease-in-out infinite;
+}
+.asset-generating > * { position: relative; }
+.asset-generating-label { font-size: 12px; font-weight: 700; }
+.asset-generating-time { font-size: 11px; font-family: var(--font-mono); color: var(--text-2); }
+.asset-cover-badge { z-index: 2; }
+@keyframes asset-shimmer { to { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { .asset-generating::before { animation: none; } }
 .asset-cover-empty { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--text-3); }
 .asset-body {
   flex: 1;

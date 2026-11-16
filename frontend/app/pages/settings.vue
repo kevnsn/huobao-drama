@@ -759,17 +759,18 @@ const serviceTypes = computed(() => [
   { type: 'image', label: t('common.serviceType.image') },
   { type: 'video', label: t('common.serviceType.video') },
 ])
-const providers = ['gemini', 'openai', 'volcengine', 'minimax', 'aliyun', 'codex', 'openrouter']
+const providers = ['gemini', 'openai', 'volcengine', 'minimax', 'aliyun', 'codex', 'openrouter', 'anyfast']
 // Which providers each service type accepts (mirrors officialProviders in backend/src/services/ai.ts)
 const providersByType = {
   text: ['codex', 'gemini', 'openai', 'volcengine'],
-  image: ['codex', 'gemini', 'openai', 'volcengine'],
-  video: ['openrouter', 'volcengine', 'aliyun', 'minimax'],
+  image: ['codex', 'openrouter', 'gemini', 'openai', 'volcengine'],
+  video: ['openrouter', 'anyfast', 'volcengine', 'aliyun', 'minimax'],
 }
 const providerKeyLinks = {
   gemini: 'https://aistudio.google.com/apikey',
   openai: 'https://platform.openai.com/api-keys',
   openrouter: 'https://openrouter.ai/keys',
+  anyfast: 'https://www.anyfast.ai',
   volcengine: 'https://console.volcengine.com/ark',
   aliyun: 'https://bailian.console.aliyun.com',
   minimax: 'https://platform.minimaxi.com',
@@ -807,12 +808,14 @@ const providerPresets = {
     codex: { label: 'Codex (ChatGPT)', baseUrl: 'https://chatgpt.com/backend-api/codex', models: ['gpt-6-astra', 'gpt-6.1-terra', 'gpt-5.6-terra'] },
   },
   image: {
+    openrouter: { label: 'OpenRouter', baseUrl: 'https://openrouter.ai', models: ['bytedance-seed/seedream-5-0-pro', 'bytedance-seed/seedream-5-5', 'google/gemini-nano-banana-2.1', 'openai/gpt-image-2'] },
     codex: { label: 'Codex (ChatGPT)', baseUrl: 'https://chatgpt.com/backend-api/codex', models: ['gpt-6-astra', 'gpt-5.6-terra'] },
     gemini: { label: 'Gemini (official)', baseUrl: 'https://generativelanguage.googleapis.com', models: ['gemini-3-pro-image', 'gemini-3.1-flash-image'] },
     openai: { label: 'OpenAI (official)', baseUrl: 'https://api.openai.com', models: ['gpt-image-2'] },
   },
   video: {
-    openrouter: { label: 'OpenRouter', baseUrl: 'https://openrouter.ai', models: ['bytedance/seedance-2.5', 'google/veo-3.1-fast', 'bytedance/seedance-2.0', 'kwaivgi/kling-v3.0-pro', 'alibaba/wan-3.0'] },
+    anyfast: { label: 'AnyFast', baseUrl: 'https://www.anyfast.ai', models: ['seedance-2.5', 'seedance-2.5-flash', 'seedance-2.0', 'seedance-2.0-fast', 'seedance-2.0-mini', 'wan3.0-video', 'wan3.0-video-prime'] },
+    openrouter: { label: 'OpenRouter', baseUrl: 'https://openrouter.ai', models: ['bytedance/seedance-2.5', 'google/veo-3.1-fast', 'bytedance/seedance-2.0', 'kwaivgi/kling-v3.0-pro', 'alibaba/wan-3.0', 'alibaba/wan-3.0-prime'] },
     aliyun: { label: 'Alibaba Cloud Wan 3.0', baseUrl: 'https://{WorkspaceId}.cn-beijing.maas.aliyuncs.com', models: ['wan3.0-video', 'wan3.0-video-prime'] },
     volcengine: { label: 'Seedance 2.0 (official)', baseUrl: 'https://ark.cn-beijing.volces.com', models: ['doubao-seedance-2-0-mini-260615', 'doubao-seedance-2-0-fast-260128', 'doubao-seedance-2-0-260128'] },
     minimax: { label: 'MiniMax H3 (official)', baseUrl: 'https://api.minimaxi.com', models: ['MiniMax-H3'] },
@@ -1465,7 +1468,7 @@ onBeforeUnmount(stopUsagePoll)
 .nav-item.active { background: var(--accent-bg); color: var(--accent-text); font-weight: 650; }
 .nav-item:focus-visible { outline: none; box-shadow: 0 0 0 3.5px var(--button-focus); }
 
-.settings-content { flex: 1; min-width: 0; min-height: 0; overflow: hidden; }
+.settings-content { flex: 1; min-width: 0; min-height: 0; overflow: clip; }
 .settings-scroll { height: 100%; overflow-y: auto; padding: 20px 28px 48px; animation: fadeUp 0.3s var(--ease-out); }
 /* 各分组卡片之间的间距（通用页内容语言/外观等） */
 .settings-scroll > .card + .card { margin-top: 14px; }

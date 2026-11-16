@@ -175,6 +175,8 @@
   },
   "detail": {
     "head": {
+      "styleHint": "비주얼 스타일 — 이후 생성되는 이미지와 영상에 적용됩니다",
+      "styleSwitched": "스타일이 {name}(으)로 변경되었습니다. 기존 이미지와 영상은 다시 생성해야 반영됩니다.",
       "charCount": "캐릭터 {n}",
       "sceneCount": "장면 {n}",
       "epCount": "{n}화",
@@ -240,6 +242,8 @@
       "genImage": "이미지 생성",
       "saving": "저장 중…",
       "generating": "{kind} 「{name}」 이미지 생성 중",
+      "phasePrompt": "이미지 프롬프트 작성 중…",
+      "phaseImage": "이미지 생성 중…",
       "genTimeout": "{kind} 「{name}」 생성 시간이 초과되었습니다. 나중에 새로고침해 확인하세요",
       "uploaded": "{kind} 「{name}」 이미지를 업로드했습니다",
       "needEpisodeForImage": "에셋 이미지를 생성하려면 먼저 「에피소드 목록」에서 1화 이상을 생성하세요",
