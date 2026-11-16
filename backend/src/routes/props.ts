@@ -15,8 +15,8 @@ const PROP_IMAGE_SIZE = '1024x1024'
 // POST /props — 手动新增道具（传入 episode_id 时关联到该集）
 app.post('/', async (c) => {
   const body = await c.req.json()
-  if (!body.drama_id) return badRequest(c, 'drama_id 必填')
-  if (!body.name?.trim()) return badRequest(c, '名称必填')
+  if (!body.drama_id) return badRequest(c, 'drama_id is required')
+  if (!body.name?.trim()) return badRequest(c, 'Name is required')
   const ts = now()
   const res = await db.insert(schema.props).values({
     name: body.name.trim(),
@@ -84,17 +84,17 @@ app.post('/:id/generate-prompt', async (c) => {
   const id = Number(c.req.param('id'))
   const body = await c.req.json()
   const [prop] = await db.select().from(schema.props).where(eq(schema.props.id, id))
-  if (!prop) return badRequest(c, '道具不存在')
-  if (!body.episode_id) return badRequest(c, 'episode_id 必填')
+  if (!prop) return badRequest(c, 'Prop not found')
+  if (!body.episode_id) return badRequest(c, 'episode_id is required')
 
   const [ep] = await db.select().from(schema.episodes).where(eq(schema.episodes.id, Number(body.episode_id)))
-  if (!ep) return badRequest(c, '剧集不存在')
+  if (!ep) return badRequest(c, 'Episode not found')
 
   logTaskStart('FinalPrompt', 'prop-generate', { propId: id, episodeId: ep.id, force: !!body.force })
   const finalPrompt = await ensurePropFinalPrompt(prop, ep.id, !!body.force, { model: body.text_model, configId: body.text_config_id ?? undefined })
   if (!finalPrompt) {
     logTaskError('FinalPrompt', 'prop-generate', { propId: id, error: 'agent returned empty prompt' })
-    return badRequest(c, '最终提示词生成失败，请重试')
+    return badRequest(c, 'Failed to generate the final prompt. Please try again.')
   }
   logTaskSuccess('FinalPrompt', 'prop-generate', { propId: id })
   return success(c, { final_prompt: finalPrompt })
@@ -105,11 +105,11 @@ app.post('/:id/generate-image', async (c) => {
   const id = Number(c.req.param('id'))
   const body = await c.req.json()
   const [prop] = await db.select().from(schema.props).where(eq(schema.props.id, id))
-  if (!prop) return badRequest(c, '道具不存在')
-  if (!body.episode_id) return badRequest(c, 'episode_id 必填')
+  if (!prop) return badRequest(c, 'Prop not found')
+  if (!body.episode_id) return badRequest(c, 'episode_id is required')
 
   const [ep] = await db.select().from(schema.episodes).where(eq(schema.episodes.id, Number(body.episode_id)))
-  if (!ep) return badRequest(c, '剧集不存在')
+  if (!ep) return badRequest(c, 'Episode not found')
 
   const stylePrompt = await getDramaStylePrompt(prop.dramaId)
   const finalPrompt = await ensurePropFinalPrompt(prop, ep.id, false, { model: body.text_model, configId: body.text_config_id ?? undefined })

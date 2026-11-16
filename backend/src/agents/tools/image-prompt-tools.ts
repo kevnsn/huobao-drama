@@ -20,7 +20,7 @@ import { getDramaId } from '../context.js'
 
 const readCharacters = createTool({
   id: 'read_characters',
-  description: '读取当前剧集中的所有角色信息，用于生成角色三视图最终提示词。',
+  description: 'Read all characters in the current episode, used to generate final character turnaround prompts.',
   inputSchema: z.object({}),
   execute: async (_input, context) => {
     const dramaId = getDramaId(context?.requestContext)
@@ -44,10 +44,10 @@ const readCharacters = createTool({
 
 const saveCharacterFinalPrompt = createTool({
   id: 'save_character_final_prompt',
-  description: '保存为角色创作的三视图最终提示词。项目视觉风格会由工具自动拼接，prompt 参数中不要包含风格词。',
+  description: 'Save the final turnaround prompt created for a character. The project visual style is appended automatically by the tool; do not include style words in the prompt parameter.',
   inputSchema: z.object({
     character_id: z.number(),
-    prompt: z.string().describe('角色三视图最终提示词（使用会话语言指令指定的目标语言，不含风格词）'),
+    prompt: z.string().describe('Final character turnaround prompt (in the target language set by the session language instruction, without style words)'),
   }),
   execute: async ({ character_id, prompt }, context) => {
     const dramaId = getDramaId(context?.requestContext)
@@ -75,7 +75,7 @@ const saveCharacterFinalPrompt = createTool({
 
 const readScenes = createTool({
   id: 'read_scenes',
-  description: '读取当前剧集中的所有场景信息，用于生成场景固定视角最终提示词。',
+  description: 'Read all scenes in the current episode, used to generate final fixed-viewpoint scene prompts.',
   inputSchema: z.object({}),
   execute: async (_input, context) => {
     const dramaId = getDramaId(context?.requestContext)
@@ -98,10 +98,10 @@ const readScenes = createTool({
 
 const saveSceneFinalPrompt = createTool({
   id: 'save_scene_final_prompt',
-  description: '保存为场景创作的固定视角（前景/中景/后景）最终提示词。项目视觉风格会由工具自动拼接，prompt 参数中不要包含风格词。',
+  description: 'Save the final fixed-viewpoint (foreground/midground/background) prompt created for a scene. The project visual style is appended automatically by the tool; do not include style words in the prompt parameter.',
   inputSchema: z.object({
     scene_id: z.number(),
-    prompt: z.string().describe('场景固定视角最终提示词（使用会话语言指令指定的目标语言，不含风格词）'),
+    prompt: z.string().describe('Final fixed-viewpoint scene prompt (in the target language set by the session language instruction, without style words)'),
   }),
   execute: async ({ scene_id, prompt }, context) => {
     const dramaId = getDramaId(context?.requestContext)
@@ -129,7 +129,7 @@ const saveSceneFinalPrompt = createTool({
 
 const readProps = createTool({
   id: 'read_props',
-  description: '读取当前剧集项目中的所有道具信息，用于生成道具白底单品最终提示词。',
+  description: 'Read all props in the current episode project, used to generate final white-background prop prompts.',
   inputSchema: z.object({}),
   execute: async (_input, context) => {
     const dramaId = getDramaId(context?.requestContext)
@@ -151,10 +151,10 @@ const readProps = createTool({
 
 const savePropFinalPrompt = createTool({
   id: 'save_prop_final_prompt',
-  description: '保存为道具创作的白底单品最终提示词。项目视觉风格会由工具自动拼接，prompt 参数中不要包含风格词。',
+  description: 'Save the final white-background single-item prompt created for a prop. The project visual style is appended automatically by the tool; do not include style words in the prompt parameter.',
   inputSchema: z.object({
     prop_id: z.number(),
-    prompt: z.string().describe('道具白底单品最终提示词（使用会话语言指令指定的目标语言，不含风格词）'),
+    prompt: z.string().describe('Final white-background prop prompt (in the target language set by the session language instruction, without style words)'),
   }),
   execute: async ({ prop_id, prompt }, context) => {
     const dramaId = getDramaId(context?.requestContext)

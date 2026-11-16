@@ -53,7 +53,7 @@ try {
   fs.mkdirSync(userDataDir, { recursive: true })
   app.setPath('userData', userDataDir)
 } catch (error) {
-  dialog.showErrorBox('火宝短剧启动失败', `无法准备用户目录：${userDataDir}\n${(error as Error).message}`)
+  dialog.showErrorBox('HuobaoDrama failed to start', `Could not prepare the user data directory: ${userDataDir}\n${(error as Error).message}`)
   app.exit(1)
 }
 
@@ -66,7 +66,7 @@ function failStartup(error: unknown) {
   const message = redactStartupLog(error instanceof Error ? error.message : error)
   startupLog.write(`fatal: ${error instanceof Error ? error.stack : error}`)
   showMainWindow()
-  dialog.showErrorBox('火宝短剧启动失败', `${message}\n\n启动日志：${startupLog.file}\n请将此日志发给技术支持，无需删除项目数据。`)
+  dialog.showErrorBox('HuobaoDrama failed to start', `${message}\n\nStartup log: ${startupLog.file}\nPlease send this log to support. You do not need to delete any project data.`)
   app.quit()
 }
 process.on('uncaughtException', failStartup)
@@ -134,7 +134,7 @@ function loadStorageConfig(): string {
   try {
     const parsed = JSON.parse(fs.readFileSync(file, 'utf8'))
     const dir = parsed?.dataDir
-    if (typeof dir !== 'string' || !path.isAbsolute(dir)) throw new Error('dataDir 非绝对路径')
+    if (typeof dir !== 'string' || !path.isAbsolute(dir)) throw new Error('dataDir is not an absolute path')
     fs.mkdirSync(dir, { recursive: true })
     return dir
   } catch (err) {
@@ -241,7 +241,7 @@ function startBackend(): void {
     startupLog.write(`backend exited code=${code} restarting=${backendRestarting}`)
     // 迁移/重启期间的退出是预期行为，由调用方接管
     if (!quitting && !backendRestarting) {
-      failStartup(new Error(`后台服务异常退出（code ${code}）。${backendStartupTail ? '\n' + backendStartupTail : ''}`))
+      failStartup(new Error(`Backend service exited unexpectedly (code ${code}).${backendStartupTail ? '\n' + backendStartupTail : ''}`))
     }
   })
 }
@@ -252,7 +252,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1440,
     height: 900,
-    title: '火宝短剧',
+    title: 'HuobaoDrama',
     show: true,
     backgroundColor: '#f6f7fb',
     webPreferences: {
@@ -260,7 +260,7 @@ function createWindow() {
     },
   })
   mainWindow.once('ready-to-show', showMainWindow)
-  mainWindow.webContents.on('render-process-gone', (_event, details) => failStartup(new Error(`界面进程退出：${details.reason} (${details.exitCode})`)))
+  mainWindow.webContents.on('render-process-gone', (_event, details) => failStartup(new Error(`Renderer process exited: ${details.reason} (${details.exitCode})`)))
   mainWindow.webContents.on('unresponsive', () => startupLog.write('renderer unresponsive'))
   // 页面标题自带产品名，避免文件路径兜底标题
   mainWindow.on('page-title-updated', e => e.preventDefault())
@@ -323,8 +323,8 @@ async function bootstrap() {
       ? path.join(runtimeResourcesDir, 'frontend')
       : path.join(REPO_ROOT, 'frontend', '.output', 'public')
 
-    if (!fs.existsSync(backendBundle)) throw new Error('安装资源缺失：build/backend.mjs')
-    if (!fs.existsSync(path.join(currentFrontendDist, 'index.html'))) throw new Error('安装资源缺失：frontend/index.html')
+    if (!fs.existsSync(backendBundle)) throw new Error('Missing install resource: build/backend.mjs')
+    if (!fs.existsSync(path.join(currentFrontendDist, 'index.html'))) throw new Error('Missing install resource: frontend/index.html')
     if (quitting) return
     startBackend()
     await waitHealthy(backendPort)
@@ -349,9 +349,9 @@ async function assertWritable(dir: string): Promise<void> {
 }
 
 ipcMain.handle('huobao:pick-directory', async () => {
-  if (!mainWindow) return { ok: false, error: '窗口未就绪' }
+  if (!mainWindow) return { ok: false, error: 'Window is not ready' }
   const res = await dialog.showOpenDialog(mainWindow, {
-    title: '选择数据存储目录',
+    title: 'Choose data storage folder',
     properties: ['openDirectory', 'createDirectory'],
   })
   if (res.canceled || !res.filePaths[0]) return { ok: false, canceled: true }
@@ -360,13 +360,13 @@ ipcMain.handle('huobao:pick-directory', async () => {
   // 轻校验（完整校验在迁移引擎 start-migration 时重新执行）
   const a = normCase(path.resolve(currentDataDir))
   const b = normCase(target)
-  if (b === a) return { ok: false, error: '不能选择当前数据目录' }
-  if (b.startsWith(a + path.sep)) return { ok: false, error: '目标目录在当前数据目录内部' }
-  if (a.startsWith(b + path.sep)) return { ok: false, error: '目标目录是当前数据目录的上级目录' }
+  if (b === a) return { ok: false, error: 'Cannot choose the current data folder' }
+  if (b.startsWith(a + path.sep)) return { ok: false, error: 'The target folder is inside the current data folder' }
+  if (a.startsWith(b + path.sep)) return { ok: false, error: 'The target folder is a parent of the current data folder' }
   try {
     await assertWritable(target)
   } catch {
-    return { ok: false, error: '目标目录不可写' }
+    return { ok: false, error: 'The target folder is not writable' }
   }
 
   let freeBytes: number | null = null

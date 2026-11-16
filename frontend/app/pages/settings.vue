@@ -161,7 +161,8 @@
                 <div class="config-main">
                   <div class="config-line">
                     <span class="config-name">{{ c.name || `${c.provider}-${c.service_type}` }}</span>
-                    <span :class="['tag', c.api_key ? 'tag-success' : 'tag-error']">{{ c.api_key ? t('settings.ai.hasKey') : t('settings.ai.noKey') }}</span>
+                    <span v-if="c.provider === 'codex'" class="tag tag-success">{{ t('settings.ai.codexLogin') }}</span>
+                    <span v-else :class="['tag', c.api_key ? 'tag-success' : 'tag-error']">{{ c.api_key ? t('settings.ai.hasKey') : t('settings.ai.noKey') }}</span>
                     <span v-if="!c.is_active" class="tag">{{ t('settings.common.disabled') }}</span>
                   </div>
                   <div class="config-models">
@@ -494,31 +495,40 @@
           <span class="tag tag-accent ml-auto">{{ serviceMeta[cfgForm.service_type].label }}</span>
         </div>
         <div class="dialog-body config-dialog-body">
-          <div class="preset-picker">
-            <button
-              v-for="preset in presetsByType(cfgForm.service_type)"
-              :key="`${cfgForm.service_type}-${preset.provider}`"
-              type="button"
-              class="preset-pill"
-              @click="applyProviderPreset(cfgForm.service_type, preset.provider)"
-            >
-              {{ preset.label }}
-            </button>
+          <label class="field"><span class="field-label">{{ t('settings.cfg.provider') }}</span>
+            <BaseSelect :model-value="cfgForm.provider" :options="providerSelectOptions" :placeholder="t('settings.cfg.providerPlaceholder')" :searchable="false" @update:model-value="onProviderPicked" />
+          </label>
+          <div v-if="providerInfo" class="provider-info">
+            <div class="provider-info-summary">{{ providerInfo.summary }}</div>
+            <dl class="provider-info-rows">
+              <template v-for="row in providerInfo.rows" :key="row.key">
+                <dt>{{ row.label }}</dt>
+                <dd>{{ row.text }}</dd>
+              </template>
+            </dl>
+            <a v-if="providerInfo.link" class="provider-info-link" :href="providerInfo.link" target="_blank" rel="noopener">{{ t('settings.cfg.info.getKey') }} ↗</a>
           </div>
           <label class="field">
             <span class="field-label">{{ t('settings.cfg.name') }}</span>
             <input v-model="cfgForm.name" class="input" :placeholder="t('settings.cfg.namePlaceholder')" />
-          </label>
-          <label class="field"><span class="field-label">{{ t('settings.cfg.provider') }}</span>
-            <BaseSelect v-model="cfgForm.provider" :options="providerSelectOptions" :placeholder="t('settings.cfg.providerPlaceholder')" searchable />
           </label>
           <label class="field">
             <span class="field-label">{{ t('settings.cfg.priority') }}</span>
             <input v-model.number="cfgForm.priority" class="input" type="number" min="0" max="999" />
             <span class="field-hint">{{ t('settings.cfg.priorityHint') }}</span>
           </label>
-          <label class="field"><span class="field-label">API Key</span><input v-model="cfgForm.api_key" class="input" type="password" placeholder="sk-..." /></label>
-          <label class="field"><span class="field-label">Base URL</span><input v-model="cfgForm.base_url" class="input" placeholder="https://..." /></label>
+          <template v-if="cfgForm.provider !== 'codex'">
+            <label class="field">
+              <span class="field-label">API Key</span>
+              <input v-model="cfgForm.api_key" class="input" type="password" placeholder="sk-..." />
+              <span class="field-hint">{{ t('settings.cfg.apiKeyHint') }}</span>
+            </label>
+            <label class="field">
+              <span class="field-label">Base URL</span>
+              <input v-model="cfgForm.base_url" class="input" placeholder="https://..." />
+              <span class="field-hint">{{ t('settings.cfg.baseUrlHint') }}</span>
+            </label>
+          </template>
           <div class="field">
             <span class="field-label">{{ t('settings.cfg.models') }}</span>
             <div v-if="cfgForm.models.length" class="model-chips">
@@ -542,7 +552,7 @@
             </div>
             <span class="field-hint">{{ t('settings.cfg.modelsHint') }}</span>
           </div>
-          <label v-if="cfgForm.service_type === 'text'" class="field">
+          <label v-if="cfgForm.service_type === 'text' && cfgForm.provider !== 'codex'" class="field">
             <span class="field-label">Temperature <span class="dim">({{ t('settings.cfg.tempHint') }})</span></span>
             <input v-model="cfgForm.temperature" class="input" type="number" step="0.1" min="0" max="2" :placeholder="t('settings.cfg.tempPlaceholder')" />
             <span class="field-hint">{{ t('settings.cfg.tempNote') }}</span>
@@ -697,7 +707,7 @@ import { providerIconUrl } from '~/composables/useProviderIcon'
 import { startTour, autoTour } from '~/composables/useTour'
 import { confirmUnifiedLanguage } from '~/composables/useUnifiedLanguage'
 
-const { t, locale } = useI18n()
+const { t, locale, te } = useI18n()
 
 const showBrandImage = ref(true)
 const tab = ref('ai')
@@ -749,8 +759,42 @@ const serviceTypes = computed(() => [
   { type: 'image', label: t('common.serviceType.image') },
   { type: 'video', label: t('common.serviceType.video') },
 ])
-const providers = ['gemini', 'openai', 'volcengine', 'minimax', 'aliyun']
-const providerSelectOptions = computed(() => providers.map(p => ({ label: p, value: p })))
+const providers = ['gemini', 'openai', 'volcengine', 'minimax', 'aliyun', 'codex', 'openrouter']
+// Which providers each service type accepts (mirrors officialProviders in backend/src/services/ai.ts)
+const providersByType = {
+  text: ['codex', 'gemini', 'openai', 'volcengine'],
+  image: ['codex', 'gemini', 'openai', 'volcengine'],
+  video: ['openrouter', 'volcengine', 'aliyun', 'minimax'],
+}
+const providerKeyLinks = {
+  gemini: 'https://aistudio.google.com/apikey',
+  openai: 'https://platform.openai.com/api-keys',
+  openrouter: 'https://openrouter.ai/keys',
+  volcengine: 'https://console.volcengine.com/ark',
+  aliyun: 'https://bailian.console.aliyun.com',
+  minimax: 'https://platform.minimaxi.com',
+}
+const providerSelectOptions = computed(() => (providersByType[cfgForm.service_type] || providers).map(p => ({
+  value: p,
+  label: t(`settings.cfg.info.names.${p}`),
+  description: t(`settings.cfg.info.${cfgForm.service_type}.${p}.summary`),
+})))
+// "How this works" card for the provider currently selected in the dialog
+const providerInfo = computed(() => {
+  const base = `settings.cfg.info.${cfgForm.service_type}.${cfgForm.provider}`
+  if (!cfgForm.provider || !te(`${base}.summary`)) return null
+  return {
+    summary: t(`${base}.summary`),
+    rows: ['needs', 'billing', 'models']
+      .filter(key => te(`${base}.${key}`))
+      .map(key => ({ key, label: t(`settings.cfg.info.labels.${key}`), text: t(`${base}.${key}`) })),
+    link: providerKeyLinks[cfgForm.provider],
+  }
+})
+function onProviderPicked(provider) {
+  if (providerPresets[cfgForm.service_type]?.[provider]) applyProviderPreset(cfgForm.service_type, provider)
+  else cfgForm.provider = provider
+}
 const serviceMeta = computed(() => ({
   text: { label: t('common.serviceType.text'), desc: t('settings.ai.meta.text') },
   image: { label: t('common.serviceType.image'), desc: t('settings.ai.meta.image') },
@@ -758,29 +802,32 @@ const serviceMeta = computed(() => ({
 }))
 const providerPresets = {
   text: {
-    gemini: { label: 'Gemini 官方', baseUrl: 'https://generativelanguage.googleapis.com', models: ['gemini-3.8-flash', 'gemini-3.1-pro-preview', 'gemini-3-flash-preview'] },
-    openai: { label: 'OpenAI 官方', baseUrl: 'https://api.openai.com', models: ['deepseek-v4-pro', 'gpt-5.6-terra'] },
+    gemini: { label: 'Gemini (official)', baseUrl: 'https://generativelanguage.googleapis.com', models: ['gemini-3.8-flash', 'gemini-3.1-pro-preview', 'gemini-3-flash-preview'] },
+    openai: { label: 'OpenAI (official)', baseUrl: 'https://api.openai.com', models: ['deepseek-v4-pro', 'gpt-5.6-terra'] },
+    codex: { label: 'Codex (ChatGPT)', baseUrl: 'https://chatgpt.com/backend-api/codex', models: ['gpt-6-astra', 'gpt-6.1-terra', 'gpt-5.6-terra'] },
   },
   image: {
-    gemini: { label: 'Gemini 官方', baseUrl: 'https://generativelanguage.googleapis.com', models: ['gemini-3-pro-image', 'gemini-3.1-flash-image'] },
-    openai: { label: 'OpenAI 官方', baseUrl: 'https://api.openai.com', models: ['gpt-image-2'] },
+    codex: { label: 'Codex (ChatGPT)', baseUrl: 'https://chatgpt.com/backend-api/codex', models: ['gpt-6-astra', 'gpt-5.6-terra'] },
+    gemini: { label: 'Gemini (official)', baseUrl: 'https://generativelanguage.googleapis.com', models: ['gemini-3-pro-image', 'gemini-3.1-flash-image'] },
+    openai: { label: 'OpenAI (official)', baseUrl: 'https://api.openai.com', models: ['gpt-image-2'] },
   },
   video: {
-    aliyun: { label: '阿里云百炼 Wan 3.0', baseUrl: 'https://{WorkspaceId}.cn-beijing.maas.aliyuncs.com', models: ['wan3.0-video', 'wan3.0-video-prime'] },
-    volcengine: { label: 'Seedance 2.0 官方', baseUrl: 'https://ark.cn-beijing.volces.com', models: ['doubao-seedance-2-0-mini-260615', 'doubao-seedance-2-0-fast-260128', 'doubao-seedance-2-0-260128'] },
-    minimax: { label: 'MiniMax H3 官方', baseUrl: 'https://api.minimaxi.com', models: ['MiniMax-H3'] },
+    openrouter: { label: 'OpenRouter', baseUrl: 'https://openrouter.ai', models: ['bytedance/seedance-2.5', 'google/veo-3.1-fast', 'bytedance/seedance-2.0', 'kwaivgi/kling-v3.0-pro', 'alibaba/wan-3.0'] },
+    aliyun: { label: 'Alibaba Cloud Wan 3.0', baseUrl: 'https://{WorkspaceId}.cn-beijing.maas.aliyuncs.com', models: ['wan3.0-video', 'wan3.0-video-prime'] },
+    volcengine: { label: 'Seedance 2.0 (official)', baseUrl: 'https://ark.cn-beijing.volces.com', models: ['doubao-seedance-2-0-mini-260615', 'doubao-seedance-2-0-fast-260128', 'doubao-seedance-2-0-260128'] },
+    minimax: { label: 'MiniMax H3 (official)', baseUrl: 'https://api.minimaxi.com', models: ['MiniMax-H3'] },
   },
 }
 const huobaoQuickConfigs = computed(() => {
   const base = huobaoSiteUrl.value
   return [
-    { service_type: 'text', provider: 'gemini', name: '火宝文本服务 · Gemini', base_url: base, model: ['gemini-3.8-flash', 'gemini-3.1-pro-preview', 'gemini-3-flash-preview'], priority: 101 },
-    { service_type: 'text', provider: 'openai', name: '火宝文本服务 · OpenAI', base_url: base, model: ['deepseek-v4-pro', 'deepseek-v4-flash', 'gpt-5.6-terra'], priority: 100 },
-    { service_type: 'image', provider: 'openai', name: '火宝图片服务 · OpenAI', base_url: base, model: ['gpt-image-2'], priority: 99 },
-    { service_type: 'image', provider: 'gemini', name: '火宝图片服务 · Gemini', base_url: base, model: ['gemini-3-pro-image', 'gemini-3.1-flash-image'], priority: 97 },
-    { service_type: 'video', provider: 'aliyun', name: '火宝视频服务 · Wan 3.0', base_url: `${base}/qwen`, model: ['wan3.0-video', 'wan3.0-video-prime'], priority: 97 },
-    { service_type: 'video', provider: 'volcengine', name: '火宝视频服务 · Seedance', base_url: `${base}/volcengine`, model: ['doubao-seedance-2-0-mini-260615', 'doubao-seedance-2-0-fast-260128', 'doubao-seedance-2-0-260128'], priority: 96 },
-    { service_type: 'video', provider: 'minimax', name: '火宝视频服务 · MiniMax', base_url: `${base}/minimax`, model: ['MiniMax-H3'], priority: 98 },
+    { service_type: 'text', provider: 'gemini', name: 'Huobao Text · Gemini', base_url: base, model: ['gemini-3.8-flash', 'gemini-3.1-pro-preview', 'gemini-3-flash-preview'], priority: 101 },
+    { service_type: 'text', provider: 'openai', name: 'Huobao Text · OpenAI', base_url: base, model: ['deepseek-v4-pro', 'deepseek-v4-flash', 'gpt-5.6-terra'], priority: 100 },
+    { service_type: 'image', provider: 'openai', name: 'Huobao Image · OpenAI', base_url: base, model: ['gpt-image-2'], priority: 99 },
+    { service_type: 'image', provider: 'gemini', name: 'Huobao Image · Gemini', base_url: base, model: ['gemini-3-pro-image', 'gemini-3.1-flash-image'], priority: 97 },
+    { service_type: 'video', provider: 'aliyun', name: 'Huobao Video · Wan 3.0', base_url: `${base}/qwen`, model: ['wan3.0-video', 'wan3.0-video-prime'], priority: 97 },
+    { service_type: 'video', provider: 'volcengine', name: 'Huobao Video · Seedance', base_url: `${base}/volcengine`, model: ['doubao-seedance-2-0-mini-260615', 'doubao-seedance-2-0-fast-260128', 'doubao-seedance-2-0-260128'], priority: 96 },
+    { service_type: 'video', provider: 'minimax', name: 'Huobao Video · MiniMax', base_url: `${base}/minimax`, model: ['MiniMax-H3'], priority: 98 },
   ]
 })
 
@@ -1006,7 +1053,7 @@ const selectedAgentLabel = computed(() => agentDefs.value.find(a => a.type === s
 const selectedAgentIcon = computed(() => agentDefs.value.find(a => a.type === selectedAgent.value)?.icon || '')
 
 // ===== 通用：AI 内容语言（全局设置，与界面语言相互独立） =====
-const contentLanguage = ref('zh')
+const contentLanguage = ref('en')
 const contentLangOptions = [
   { value: 'zh', label: '中文', shortLabel: '中文' },
   { value: 'en', label: 'English', shortLabel: 'EN' },
@@ -1036,7 +1083,7 @@ const themeOptions = computed(() => [
 
 async function loadContentLanguage() {
   try {
-    const lang = (await settingsAPI.contentLanguage())?.language || 'zh'
+    const lang = (await settingsAPI.contentLanguage())?.language || 'en'
     contentLanguage.value = lang
     editLang.value = lang  // Agent 编辑器默认跟随内容语言
   } catch { /* 保持默认 */ }
@@ -1771,6 +1818,17 @@ onBeforeUnmount(stopUsagePoll)
 .skill-dialog-body { display: flex; flex-direction: column; gap: 12px; }
 .dialog-sub { margin-top: 4px; font-size: 12px; color: var(--text-2); }
 .test-draft-btn { margin-right: auto; }
+.provider-info {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-md, 10px);
+  background: var(--bg-2); font-size: 12px; line-height: 1.5;
+}
+.provider-info-summary { color: var(--text-0); font-weight: 500; }
+.provider-info-rows { display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; margin: 0; }
+.provider-info-rows dt { color: var(--text-3); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; padding-top: 1px; }
+.provider-info-rows dd { margin: 0; color: var(--text-1); }
+.provider-info-link { color: var(--accent); font-size: 12px; text-decoration: none; align-self: flex-start; }
+.provider-info-link:hover { text-decoration: underline; }
 .preset-picker { display: flex; flex-wrap: wrap; gap: 8px; }
 .preset-pill {
   min-height: var(--button-height-sm);

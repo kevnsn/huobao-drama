@@ -78,7 +78,7 @@ export async function generateImage(params: GenerateImageParams): Promise<number
   const config = params.configId
     ? (await getConfigById(params.configId)) ?? await getActiveConfig('image')
     : await getActiveConfig('image')
-  if (!config) throw new Error('未配置图片模型，请先到「设置」页添加并启用 AI 服务')
+  if (!config) throw new Error('No image model configured. Add and enable an AI service in Settings first')
 
   const id = await createTask('image', config, {
     storyboardId: params.storyboardId,
@@ -113,20 +113,20 @@ export async function generateImage(params: GenerateImageParams): Promise<number
 
 export async function generateVideo(params: GenerateVideoParams): Promise<number> {
   const storyboardId = params.storyboardId
-  if (storyboardId && videoSubmissions.has(storyboardId)) throw new Error('该分镜正在提交任务，请勿重复点击')
+  if (storyboardId && videoSubmissions.has(storyboardId)) throw new Error('A task is already being submitted for this shot. Please do not click again')
   if (storyboardId) videoSubmissions.add(storyboardId)
   try {
     if (storyboardId) {
       const [latest] = await db.select().from(schema.sysTask).where(and(eq(schema.sysTask.type, 'video'), eq(schema.sysTask.storyboardId, storyboardId)))
         .orderBy(desc(schema.sysTask.id)).limit(1)
-      if (latest?.status === 'processing') throw new Error('该分镜已有运行中的任务，请等待结果')
-      if (latest?.status === 'failed' && params.forceNew !== true) throw new Error('请先恢复原任务；重新生成需确认可能再次计费')
+      if (latest?.status === 'processing') throw new Error('This shot already has a running task. Please wait for the result')
+      if (latest?.status === 'failed' && params.forceNew !== true) throw new Error('Recover the original task first; regenerating must be confirmed as it may be billed again')
     }
     // 指定配置（集锁定）可能已停用/删除/厂商收敛，失效时回退到当前启用配置
     const config = params.configId
       ? (await getConfigById(params.configId)) ?? await getActiveConfig('video')
       : await getActiveConfig('video')
-    if (!config) throw new Error('未配置视频模型，请先到「设置」页添加并启用 AI 服务')
+    if (!config) throw new Error('No video model configured. Add and enable an AI service in Settings first')
 
     params.referenceAudioUrls = await prepareReferenceAudio(params.referenceAudioUrls, config.provider)
 
@@ -232,11 +232,12 @@ async function processTask(id: number, config: AIConfig) {
     })
 
     let url: string, method: string, headers: Record<string, string>, body: unknown
+    let send: typeof fetch | undefined
 
     if (type === 'image') {
       const adapter = getImageAdapter(config.provider)
       const resolvedReferenceImages = await normalizeReferenceImages(params.referenceImages)
-      ;({ url, method, headers, body } = adapter.buildGenerateRequest(config, {
+      ;({ url, method, headers, body, fetch: send } = adapter.buildGenerateRequest(config, {
         id: record.id,
         model: record.model,
         prompt: record.prompt,
@@ -292,7 +293,7 @@ async function processTask(id: number, config: AIConfig) {
       body: isMultipart ? `[multipart/form-data: ${[...(body as FormData).keys()].join(', ')}]` : body,
     })
 
-    const resp = await fetch(url, {
+    const resp = await (send ?? fetch)(url, {
       method,
       headers,
       body: isMultipart ? (body as FormData) : JSON.stringify(body),
@@ -514,7 +515,7 @@ async function handleVideoComplete(record: SysTaskRecord, videoUrl: string, dura
     .where(eq(schema.sysTask.id, record.id))
   try {
     const localPath = record.localPath && fs.existsSync(getAbsolutePath(record.localPath))
-      ? record.localPath : await downloadVideo(videoUrl, record.id)
+      ? record.localPath : await downloadVideo(videoUrl, record.id, { headers: await videoDownloadHeaders(record, videoUrl) })
     await db.update(schema.sysTask).set({ localPath, stage: 'saving', updatedAt: now() }).where(eq(schema.sysTask.id, record.id))
     await extractVideoPoster(localPath)
     // 完成状态与业务回写原子提交；恢复旧任务不能覆盖用户后来生成的视频。
@@ -532,11 +533,18 @@ async function handleVideoComplete(record: SysTaskRecord, videoUrl: string, dura
   }
 }
 
+/** Provider-hosted result URLs (OpenRouter) need the config's API key to download */
+async function videoDownloadHeaders(record: SysTaskRecord, videoUrl: string) {
+  const adapter = getVideoAdapter(record.provider || '')
+  if (!adapter.downloadHeaders) return undefined
+  return adapter.downloadHeaders(await recoveryConfig(record), videoUrl)
+}
+
 async function recoveryConfig(record: SysTaskRecord): Promise<AIConfig> {
   if (record.configId) {
     const config = await getConfigById(record.configId)
     if (config && config.provider === record.provider && config.baseUrl === record.configBaseUrl) return config
-    throw new Error('原视频服务配置已删除、停用或地址变更，请恢复原配置')
+    throw new Error('The original video service configuration was deleted, disabled or its address changed. Please restore it')
   }
   // 旧任务只在同厂商唯一配置时恢复，绝不任意换服务商查询。
   const rows = (await db.select().from(schema.aiServiceConfigs)).filter(c => c.isActive && c.serviceType === 'video' && c.provider === record.provider)
@@ -544,15 +552,15 @@ async function recoveryConfig(record: SysTaskRecord): Promise<AIConfig> {
     const config = await getConfigById(rows[0].id)
     if (config) return config
   }
-  throw new Error('历史任务无法确定原服务配置，请先核对配置')
+  throw new Error('Unable to determine the original service configuration for this historical task. Please check the configuration first')
 }
 
 export async function recoverVideoTask(id: number): Promise<void> {
   const [record] = await db.select().from(schema.sysTask).where(eq(schema.sysTask.id, id))
-  if (!record || record.type !== 'video') throw new Error('视频任务不存在')
+  if (!record || record.type !== 'video') throw new Error('Video task not found')
   if (activeTasks.has(id) || record.status === 'completed') return
-  if (!record.resultUrl && !record.taskId) throw new Error('未保存上游任务编号，请先核对上游记录，勿重复生成')
-  if (record.errorCode === 'generation_failed') throw new Error('上游已确认生成失败，无法恢复原任务')
+  if (!record.resultUrl && !record.taskId) throw new Error('Upstream task ID was not saved. Check upstream records first and do not regenerate')
+  if (record.errorCode === 'generation_failed') throw new Error('Upstream confirmed the generation failed; the original task cannot be recovered')
   // 在任何异步配置读取前获取锁，重复点击不会启动多个下载。
   activeTasks.add(id)
   try {
@@ -588,7 +596,7 @@ export async function resumeInterruptedTasks() {
     if (task.type === 'video' && (task.taskId || task.resultUrl)) {
       try { await recoverVideoTask(task.id) } catch (error) { await failTask(task.id, safeTaskError(error), 'recovery_failed') }
     } else {
-      await failTask(task.id, task.type === 'video' ? '服务中断，提交结果待确认，请先核对上游记录' : '服务重启，生成任务中断，请重试',
+      await failTask(task.id, task.type === 'video' ? 'Service interrupted; submission result unconfirmed. Check upstream records first' : 'Service restarted; generation task interrupted. Please retry',
         task.type === 'video' ? 'submission_unknown' : 'interrupted')
     }
   }
@@ -678,10 +686,10 @@ function resolvePublicMediaUrl(value: string | null | undefined, kind: 'video' |
   if (raw.startsWith('static/') || raw.startsWith('/static/')) {
     const base = (process.env.PUBLIC_BASE_URL || '').trim().replace(/\/+$/, '')
     if (!base) {
-      const label = kind === 'video' ? '视频' : kind === 'audio' ? '音频' : '文件'
+      const label = kind === 'video' ? 'video' : kind === 'audio' ? 'audio' : 'file'
       throw new Error(
-        `参考${label}为本地路径 ${raw}，但后端未配置 PUBLIC_BASE_URL，上游视频生成 API 无法访问内网地址。` +
-        `请在 backend/.env 配置 PUBLIC_BASE_URL（如 https://your-domain.com）后重试，或改用公网 URL。`,
+        `Reference ${label} is a local path (${raw}), but PUBLIC_BASE_URL is not configured on the backend, so the upstream video generation API cannot reach the internal address. ` +
+        `Set PUBLIC_BASE_URL in backend/.env (e.g. https://your-domain.com) and retry, or use a public URL.`,
       )
     }
     const p = raw.startsWith('/') ? raw : `/${raw}`

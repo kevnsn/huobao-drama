@@ -78,9 +78,9 @@ export async function checkFfmpegSuite(): Promise<FfmpegSuite> {
   } else if (!warned) {
     warned = true
     console.warn(
-      `[ffmpeg] 内置二进制不可用 (ffmpeg=${ffmpegOk ? 'ok' : 'FAIL'}, ffprobe=${ffprobeOk ? 'ok' : 'FAIL'})。` +
-      `海报帧提取与视频拼接将跳过/失败。修复：删除 node_modules 后在本机重新 npm install，` +
-      `或设置 FFMPEG_BIN/FFPROBE_BIN 指向有效的可执行文件`
+      `[ffmpeg] Bundled binary unavailable (ffmpeg=${ffmpegOk ? 'ok' : 'FAIL'}, ffprobe=${ffprobeOk ? 'ok' : 'FAIL'})。` +
+      `Poster frame extraction and video merging will be skipped or fail. Fix: delete node_modules and run npm install again on this machine, ` +
+      `or set FFMPEG_BIN/FFPROBE_BIN to a valid executable`
     )
   }
   return suite

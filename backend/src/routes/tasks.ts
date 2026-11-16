@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { getOpenRouterVideoModels, fitToModel } from '../services/openrouter-video-models.js'
 import { and, desc, eq } from 'drizzle-orm'
 import { db, schema } from '../db/index.js'
 import { success, created, badRequest } from '../utils/response.js'
@@ -20,7 +21,7 @@ app.post('/:id/recover', async c => {
 
 app.get('/:id/diagnostics', async c => {
   const [task] = await db.select().from(schema.sysTask).where(eq(schema.sysTask.id, Number(c.req.param('id'))))
-  if (!task) return badRequest(c, '任务不存在')
+  if (!task) return badRequest(c, 'Task not found')
   return success(c, { id: task.id, upstreamTaskId: task.taskId, provider: task.provider, model: task.model,
     status: task.status, stage: task.stage, errorCode: task.errorCode, error: safeTaskError(task.errorMsg),
     hasResult: !!task.resultUrl, hasLocalFile: !!task.localPath, createdAt: task.createdAt, updatedAt: task.updatedAt,
@@ -76,21 +77,21 @@ function normalizeVideoRequest(body: any) {
 
 function validateVideoRequest(body: any, provider?: string): string | null {
   for (const key of ['reference_image_urls', 'reference_video_urls', 'reference_audio_urls']) {
-    if (body[key] !== undefined && !Array.isArray(body[key])) return `${key} 必须为数组`
+    if (body[key] !== undefined && !Array.isArray(body[key])) return `${key} must be an array`
     if (Array.isArray(body[key]) && body[key].some((url: any) => typeof url !== 'string' || !url.trim())) {
-      return `${key} 中的每个 URL 都必须为非空字符串`
+      return `Every URL in ${key} must be a non-empty string`
     }
   }
 
   if (body.official_media.length) {
     for (const item of body.official_media) {
       if (!item || typeof item !== 'object' || !WAN_MEDIA_TYPES.has(item.type) || typeof item.url !== 'string' || !item.url.trim()) {
-        return 'input.media 中的每项都必须包含官方支持的 type 和非空 url'
+        return 'Every item in input.media must include an officially supported type and a non-empty url'
       }
     }
     for (const type of ['first_frame', 'last_frame', 'file', 'link']) {
       if (body.official_media.filter((item: any) => item.type === type).length > 1) {
-        return `Wan 3.0 input.media 中 ${type} 最多 1 项`
+        return `Wan 3.0 input.media allows at most 1 ${type} item`
       }
     }
   }
@@ -104,21 +105,21 @@ function validateVideoRequest(body: any, provider?: string): string | null {
   const link = Boolean(body.link_url)
 
   if ((provider || '').toLowerCase() === 'aliyun') {
-    if (imgs > 10 || vids > 5 || auds > 5) return 'Wan 3.0 参考素材超限：图片≤10、视频≤5、音频≤5'
-    if (last && !first) return 'Wan 3.0 尾帧必须与首帧同时传入'
-    if (file && link) return 'Wan 3.0 file 与 link 不能同时传入'
+    if (imgs > 10 || vids > 5 || auds > 5) return 'Wan 3.0 reference limit exceeded: images ≤10, videos ≤5, audios ≤5'
+    if (last && !first) return 'Wan 3.0 last frame must be provided together with the first frame'
+    if (file && link) return 'Wan 3.0 file and link cannot be provided together'
     if ((first || last) && (imgs + vids + auds > 0 || file || link)) {
-      return 'Wan 3.0 的 first_frame/last_frame 不能与 reference_image/reference_video/reference_audio/file/link 混用'
+      return 'Wan 3.0 first_frame/last_frame cannot be combined with reference_image/reference_video/reference_audio/file/link'
     }
     const total = imgs + vids + auds + Number(first) + Number(last) + Number(file) + Number(link)
-    if (total > 20) return 'Wan 3.0 input.media 最多 20 项'
+    if (total > 20) return 'Wan 3.0 input.media allows at most 20 items'
   } else {
-    if (imgs > 9 || vids > 3 || auds > 3) return '参考素材超限：图片≤9、视频≤3、音频≤3'
-    if (auds > 0 && imgs + vids === 0) return '参考音频需要至少 1 个参考图片或视频'
+    if (imgs > 9 || vids > 3 || auds > 3) return 'Reference limit exceeded: images ≤9, videos ≤3, audios ≤3'
+    if (auds > 0 && imgs + vids === 0) return 'Reference audio requires at least 1 reference image or video'
   }
 
   if (!String(body.prompt || '').trim() && imgs + vids + auds === 0 && !first && !last && !file && !link) {
-    return '视频生成需要至少一个参考素材或 prompt'
+    return 'Video generation requires at least one reference asset or a prompt'
   }
   return null
 }
@@ -127,10 +128,10 @@ function validateVideoRequest(body: any, provider?: string): string | null {
 app.post('/', async (c) => {
   const body = await c.req.json()
   const type = body.type as TaskType
-  if (type !== 'image' && type !== 'video') return badRequest(c, 'type 必须为 image 或 video')
+  if (type !== 'image' && type !== 'video') return badRequest(c, 'type must be image or video')
 
   if (type === 'image') {
-    if (!body.prompt) return badRequest(c, '提示词必填')
+    if (!body.prompt) return badRequest(c, 'Prompt is required')
   }
 
   const videoBody = type === 'video' ? normalizeVideoRequest(body) : null
@@ -140,9 +141,9 @@ app.post('/', async (c) => {
       const [latest] = await db.select().from(schema.sysTask).where(and(
         eq(schema.sysTask.type, 'video'), eq(schema.sysTask.storyboardId, Number(body.storyboard_id))
       )).orderBy(desc(schema.sysTask.id)).limit(1)
-      if (latest?.status === 'processing') return badRequest(c, '该分镜已有运行中的任务，请等待结果')
+      if (latest?.status === 'processing') return badRequest(c, 'This shot already has a running task. Please wait for the result')
       if (latest?.status === 'failed' && body.force_new !== true) {
-        return badRequest(c, '请先恢复原任务；重新生成需明确确认可能再次计费')
+        return badRequest(c, 'Recover the original task first; regenerating must be explicitly confirmed as it may be billed again')
       }
     }
     // 请求显式指定 config_id（工作台模型下拉跨厂商切换）时优先；
@@ -170,9 +171,17 @@ app.post('/', async (c) => {
       const voices = await resolveStoryboardVoiceReferences(String(videoBody.prompt || ''), Number(body.storyboard_id) || undefined, videoBody.reference_audio_urls)
       videoBody.prompt = voices.prompt
       videoBody.reference_audio_urls = voices.audioUrls
-      if (voices.hasVoiceReferences && videoBody.generate_audio === false) return badRequest(c, '引用角色音色时需要开启视频声音')
+      if (voices.hasVoiceReferences && videoBody.generate_audio === false) return badRequest(c, 'Video audio must be enabled when referencing character voices')
       const referenceError = validateVideoRequest(videoBody, effectiveConfig?.provider)
       if (referenceError) return badRequest(c, referenceError)
+      if (effectiveConfig?.provider === 'openrouter') {
+        // Each OpenRouter model allows different durations and resolutions; snap to the closest it accepts
+        const model = videoBody.model || effectiveConfig.model
+        const limits = (await getOpenRouterVideoModels(effectiveConfig.baseUrl))[model]
+        const fit = fitToModel(limits, Number(videoBody.duration) || null, episodeResolution || videoBody.resolution)
+        if (fit.duration != null) videoBody.duration = fit.duration
+        if (fit.resolution) { videoBody.resolution = fit.resolution; episodeResolution = fit.resolution }
+      }
     }
 
     logTaskStart('TaskAPI', 'generate', {
@@ -267,7 +276,7 @@ app.get('/', async (c) => {
 app.delete('/:id', async (c) => {
   const id = Number(c.req.param('id'))
   const [task] = await db.select().from(schema.sysTask).where(eq(schema.sysTask.id, id))
-  if (task?.status === 'processing') return badRequest(c, '任务运行中，暂不能删除')
+  if (task?.status === 'processing') return badRequest(c, 'Task is running and cannot be deleted yet')
   await db.delete(schema.sysTask).where(eq(schema.sysTask.id, id))
   return success(c)
 })

@@ -81,13 +81,13 @@ export async function checkServerUpdate(): Promise<ServerUpdateState> {
         const res = await fetch(url, { signal: AbortSignal.timeout(15_000) })
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         feed = await res.json()
-        if (!feed?.version) throw new Error('版本清单格式不正确')
+        if (!feed?.version) throw new Error('Invalid version feed format')
         break
       } catch (err) {
         lastError = err
       }
     }
-    if (!feed) throw new Error(`版本清单请求失败（已尝试 ${FEED_URLS.length} 个源）：${(lastError as Error)?.message ?? ''}`)
+    if (!feed) throw new Error(`Version feed request failed (tried ${FEED_URLS.length} sources): ${(lastError as Error)?.message ?? ''}`)
     const latestVersion = String(feed.version).replace(/^v/, '')
     lastState = {
       status: compareVersions(latestVersion, currentVersion()) > 0 ? 'available' : 'up-to-date',
@@ -110,11 +110,11 @@ export async function checkServerUpdate(): Promise<ServerUpdateState> {
  * Watchtower 异步执行：拉取新镜像 → 重建容器，本进程随后被替换，调用方只能拿到"已触发"
  */
 export async function triggerWatchtowerUpdate(): Promise<void> {
-  if (!WATCHTOWER_URL) throw new Error('未配置 Watchtower（HUOBAO_WATCHTOWER_URL），无法应用内更新')
+  if (!WATCHTOWER_URL) throw new Error('Watchtower is not configured (HUOBAO_WATCHTOWER_URL); in-app update is unavailable')
   const res = await fetch(`${WATCHTOWER_URL}/v1/update`, {
     method: 'POST',
     headers: WATCHTOWER_TOKEN ? { Authorization: `Bearer ${WATCHTOWER_TOKEN}` } : {},
     signal: AbortSignal.timeout(15_000),
   })
-  if (!res.ok) throw new Error(`Watchtower 触发失败（HTTP ${res.status}）`)
+  if (!res.ok) throw new Error(`Watchtower trigger failed (HTTP ${res.status})`)
 }

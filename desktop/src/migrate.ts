@@ -76,10 +76,10 @@ async function validateTarget(deps: MigrationDeps, target: string, currentDir: s
   if (!targetStat) {
     await fsp.mkdir(target, { recursive: true })
   } else if (!targetStat.isDirectory()) {
-    throw new Error('目标路径不是目录')
+    throw new Error('The target path is not a folder')
   } else {
     const children = await fsp.readdir(target)
-    if (children.length > 0) throw new Error('目标目录必须为空')
+    if (children.length > 0) throw new Error('The target folder must be empty')
   }
 
   // 可写探针
@@ -90,11 +90,11 @@ async function validateTarget(deps: MigrationDeps, target: string, currentDir: s
   // 路径关系（win32 大小写不敏感）
   const a = deps.normCase(path.resolve(currentDir))
   const b = deps.normCase(path.resolve(target))
-  if (b === a) throw new Error('不能选择当前数据目录')
-  if (b.startsWith(a + path.sep)) throw new Error('目标目录在当前数据目录内部')
-  if (a.startsWith(b + path.sep)) throw new Error('目标目录是当前数据目录的上级目录')
+  if (b === a) throw new Error('Cannot choose the current data folder')
+  if (b.startsWith(a + path.sep)) throw new Error('The target folder is inside the current data folder')
+  if (a.startsWith(b + path.sep)) throw new Error('The target folder is a parent of the current data folder')
   const userData = deps.normCase(path.resolve(path.dirname(currentDir))) // <userData>
-  if (b === userData || a.startsWith(b + path.sep)) throw new Error('不能选择应用数据目录及其上级目录')
+  if (b === userData || a.startsWith(b + path.sep)) throw new Error('Cannot choose the app data folder or its parent folders')
 
   // 待搬总量（跨卷空间校验 + 迁移进度共用）
   let totalBytes = 0
@@ -118,7 +118,7 @@ async function validateTarget(deps: MigrationDeps, target: string, currentDir: s
     if (free < totalBytes * 1.05) {
       const needGb = ((totalBytes * 1.05) / 1024 ** 3).toFixed(1)
       const freeGb = (free / 1024 ** 3).toFixed(1)
-      throw new Error(`目标磁盘空间不足：需要约 ${needGb} GB，剩余 ${freeGb} GB`)
+      throw new Error(`Not enough disk space at the target: about ${needGb} GB needed, ${freeGb} GB free`)
     }
   }
   return totalBytes
@@ -187,7 +187,7 @@ async function moveData(
   const copiedFiles = await collectFileList(newDir)
   const copiedTotal = copiedFiles.reduce((s, f) => s + f.size, 0)
   if (copiedFiles.length !== files.length || copiedTotal !== totalBytes) {
-    throw new Error(`迁移校验失败：文件数 ${copiedFiles.length}/${files.length}，字节 ${copiedTotal}/${totalBytes}`)
+    throw new Error(`Migration verification failed: files ${copiedFiles.length}/${files.length}, bytes ${copiedTotal}/${totalBytes}`)
   }
   await fsp.rm(oldDir, { recursive: true, force: true })
 }
@@ -266,7 +266,7 @@ export async function runMigration(deps: MigrationDeps, opts: MigrateOptions): P
         deps.markRestartingFalse()
       } catch (recoverErr) {
         console.error('[migrate] 恢复后端失败:', recoverErr)
-        dialog.showErrorBox('火宝短剧', `存储迁移失败且恢复后台服务失败，应用即将关闭。\n原始错误：${message}`)
+        dialog.showErrorBox('HuobaoDrama', `Storage migration failed and the backend service could not be restored. The app will now close.\nOriginal error: ${message}`)
         app.quit()
         return
       }

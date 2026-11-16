@@ -5,6 +5,8 @@ import { success, notFound, created, badRequest, now } from '../utils/response.j
 import { toSnakeCase } from '../utils/transform.js'
 import { joinProviderUrl } from '../services/adapters/url.js'
 import { isOfficialProvider, parseConfigTemperature } from '../services/ai.js'
+import { getOpenRouterVideoModels } from '../services/openrouter-video-models.js'
+import { CODEX_BASE_URL, codexFetch } from '../services/codex-auth.js'
 import { redactUrl, logTaskError, logTaskProgress, logTaskSuccess } from '../utils/task-logger.js'
 
 const app = new Hono()
@@ -84,6 +86,16 @@ function buildProbe(serviceType: string, provider: string, baseUrl: string, mode
     }
   }
 
+  if (p === 'openrouter') {
+    // Key lookup: validates the API key without creating a (paid) video job
+    return {
+      method: 'GET',
+      url: joinProviderUrl(baseUrl, '/api/v1', '/key'),
+      headers: bearerHeaders(apiKey),
+      body: undefined,
+    }
+  }
+
   if (p === 'minimax') {
     // MiniMax 仅提供视频服务，空请求体探测鉴权/端点连通性
     return {
@@ -115,6 +127,37 @@ function buildProbe(serviceType: string, provider: string, baseUrl: string, mode
   }
 }
 
+/** Codex subscription has no key to probe: send one tiny real request through the signed-in session */
+async function probeCodex(model?: string) {
+  const url = `${CODEX_BASE_URL}/responses`
+  try {
+    const resp = await codexFetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: model || 'gpt-5.6-terra',
+        instructions: 'Reply with the single word: ok',
+        input: [{ role: 'user', content: [{ type: 'input_text', text: 'ping' }] }],
+      }),
+    })
+    const text = await resp.text()
+    return {
+      ok: resp.ok,
+      reachable: resp.ok,
+      status: resp.status,
+      status_text: resp.statusText,
+      method: 'POST',
+      url,
+      message: resp.ok
+        ? 'Codex subscription is signed in and the model responded'
+        : 'Codex responded with an error — check the model name and that your plan includes it',
+      response_preview: resp.ok ? '' : text.slice(0, 240),
+    }
+  } catch (error: any) {
+    return { ok: false, reachable: false, method: 'POST', url, message: error.message || 'Request failed', response_preview: '' }
+  }
+}
+
 // GET /ai-configs?service_type=text
 app.get('/', async (c) => {
   const serviceType = c.req.query('service_type')
@@ -132,10 +175,10 @@ app.post('/', async (c) => {
 
   // 验证必填字段
   if (!body.service_type || !body.provider) {
-    return badRequest(c, '需要 service_type 与 provider')
+    return badRequest(c, 'service_type and provider are required')
   }
   if (!isOfficialProvider(body.service_type, body.provider)) {
-    return badRequest(c, '不支持的 service_type/provider')
+    return badRequest(c, 'Unsupported service_type/provider')
   }
 
   let temperature: number | null = null
@@ -143,7 +186,7 @@ app.post('/', async (c) => {
     try {
       temperature = normalizeTemperature(body.temperature)
     } catch {
-      return badRequest(c, 'temperature 须为 0 到 2 之间的数字')
+      return badRequest(c, 'temperature must be a number between 0 and 2')
     }
   }
 
@@ -168,13 +211,19 @@ app.post('/', async (c) => {
 })
 
 // POST /ai-configs/test
+// Allowed durations and resolutions per OpenRouter video model, for the episode workbench
+app.get('/openrouter/video-models', async (c) => success(c, await getOpenRouterVideoModels()))
+
 app.post('/test', async (c) => {
   const body = await c.req.json()
+  if (String(body.provider).toLowerCase() === 'codex') {
+    return success(c, await probeCodex(Array.isArray(body.model) ? body.model[0] : body.model))
+  }
   if (!body.service_type || !body.provider || !body.base_url) {
-    return badRequest(c, '需要 service_type、provider 与 base_url')
+    return badRequest(c, 'service_type, provider and base_url are required')
   }
   if (!isOfficialProvider(body.service_type, body.provider)) {
-    return badRequest(c, '不支持的 service_type/provider')
+    return badRequest(c, 'Unsupported service_type/provider')
   }
 
   const model = Array.isArray(body.model) ? body.model[0] : body.model
@@ -204,8 +253,8 @@ app.post('/test', async (c) => {
       method: probe.method,
       url: probeUrl,
       message: reachable
-        ? (resp.ok ? '端点可访问，认证与路径基本正常' : '端点已响应，请根据状态码判断认证或路径是否正确')
-        : '端点未按预期响应，请检查 Base URL 和代理前缀',
+        ? (resp.ok ? 'Endpoint reachable; authentication and path look fine' : 'Endpoint responded; use the status code to check authentication and path')
+        : 'Endpoint did not respond as expected. Check the Base URL and proxy prefix',
       response_preview: text.slice(0, 240),
     }
     if (reachable) {
@@ -233,7 +282,7 @@ app.post('/test', async (c) => {
       reachable: false,
       method: probe.method,
       url: probeUrl,
-      message: error.message || '请求失败',
+      message: error.message || 'Request failed',
       response_preview: '',
     })
   }
@@ -257,7 +306,7 @@ app.put('/:id', async (c) => {
   const serviceType = 'service_type' in body ? body.service_type : existing.serviceType
   const provider = 'provider' in body ? body.provider : existing.provider
   if (!isOfficialProvider(serviceType, provider)) {
-    return badRequest(c, '不支持的 service_type/provider')
+    return badRequest(c, 'Unsupported service_type/provider')
   }
 
   const updates: Record<string, any> = { updatedAt: now() }
@@ -275,7 +324,7 @@ app.put('/:id', async (c) => {
     try {
       temperature = normalizeTemperature(body.temperature)
     } catch {
-      return badRequest(c, 'temperature 须为 0 到 2 之间的数字')
+      return badRequest(c, 'temperature must be a number between 0 and 2')
     }
     // 与已有 settings 合并，清空的 temperature 从 JSON 中移除
     let settings: Record<string, any> = {}

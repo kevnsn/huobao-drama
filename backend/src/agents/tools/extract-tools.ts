@@ -234,7 +234,7 @@ const saveDedupCharacters = createTool({
     }
 
     const payload = {
-      message: `角色保存完成：新增 ${results.created}，合并更新 ${results.merged}`,
+      message: `Characters saved: ${results.created} created, ${results.merged} merged`,
       ...results,
     }
     logTaskSuccess('ExtractTool', 'save-characters-complete', { episodeId, ...results })
@@ -302,7 +302,7 @@ const saveDedupScenes = createTool({
     }
 
     const payload = {
-      message: `场景保存完成：新增 ${results.created}，复用已有 ${results.reused}`,
+      message: `Scenes saved: ${results.created} created, ${results.reused} reused`,
       ...results,
     }
     logTaskSuccess('ExtractTool', 'save-scenes-complete', { episodeId, ...results })
@@ -407,7 +407,7 @@ const saveDedupProps = createTool({
     }
 
     const payload = {
-      message: `道具保存完成：新增 ${results.created}，合并更新 ${results.merged}`,
+      message: `Props saved: ${results.created} created, ${results.merged} merged`,
       ...results,
     }
     logTaskSuccess('ExtractTool', 'save-props-complete', { episodeId, ...results })

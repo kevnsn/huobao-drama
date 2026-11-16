@@ -20,15 +20,15 @@ app.get('/', async (c) => {
 // POST /style-presets — 新增风格预设
 app.post('/', async (c) => {
   const body = await c.req.json()
-  if (!body.name?.trim()) return badRequest(c, '风格名称必填')
-  if (!body.value?.trim()) return badRequest(c, '风格 key 必填')
-  if (!VALUE_PATTERN.test(body.value.trim())) return badRequest(c, '风格 key 仅支持小写字母、数字、中划线')
-  if (!body.prompt?.trim()) return badRequest(c, '提示词片段必填')
+  if (!body.name?.trim()) return badRequest(c, 'Style name is required')
+  if (!body.value?.trim()) return badRequest(c, 'Style key is required')
+  if (!VALUE_PATTERN.test(body.value.trim())) return badRequest(c, 'Style key may only contain lowercase letters, digits and hyphens')
+  if (!body.prompt?.trim()) return badRequest(c, 'Prompt fragment is required')
 
   const value = body.value.trim()
   const [dup] = await db.select().from(schema.stylePresets)
     .where(eq(schema.stylePresets.value, value))
-  if (dup) return badRequest(c, '风格 key 已存在')
+  if (dup) return badRequest(c, 'Style key already exists')
 
   const ts = now()
   const res = await db.insert(schema.stylePresets).values({
@@ -52,7 +52,7 @@ app.put('/:id', async (c) => {
   const body = await c.req.json()
   const [row] = await db.select().from(schema.stylePresets)
     .where(eq(schema.stylePresets.id, id))
-  if (!row) return notFound(c, '风格预设不存在')
+  if (!row) return notFound(c, 'Style preset not found')
 
   const updates: Record<string, any> = { updatedAt: now() }
   if (body.name !== undefined) updates.name = String(body.name).trim()

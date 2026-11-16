@@ -51,7 +51,7 @@ export class MiniMaxVideoAdapter implements VideoProviderAdapter {
   buildGenerateRequest(config: AIConfig, record: VideoGenerationRecord): ProviderRequest {
     const model = record.model || config.model || DEFAULT_MODEL
     if (!model.toLowerCase().startsWith(H3_MODEL_PREFIX)) {
-      throw new Error(`仅支持 MiniMax H3 系列模型（MiniMax-H3*），当前: ${model}`)
+      throw new Error(`Only MiniMax H3 series models (MiniMax-H3*) are supported, got: ${model}`)
     }
 
     const prompt = (record.prompt || '').trim()
@@ -61,14 +61,14 @@ export class MiniMaxVideoAdapter implements VideoProviderAdapter {
     const firstFrame = (record.firstFrameUrl || record.imageUrl || '').trim()
     const lastFrame = (record.lastFrameUrl || '').trim()
 
-    if (!prompt) throw new Error('MiniMax H3 要求必须提供提示词（text content）')
+    if (!prompt) throw new Error('MiniMax H3 requires a prompt (text content)')
     if (prompt.length > PROMPT_MAX_CHARS) {
-      throw new Error(`提示词超长：MiniMax H3 上限 ${PROMPT_MAX_CHARS} 字符，当前 ${prompt.length}`)
+      throw new Error(`Prompt too long: MiniMax H3 allows up to ${PROMPT_MAX_CHARS} characters, got ${prompt.length}`)
     }
 
     const totalRefs = refImages.length + refVideos.length + refAudios.length + (firstFrame ? 1 : 0) + (lastFrame ? 1 : 0)
     if (refImages.length > REF_LIMITS.images || refVideos.length > REF_LIMITS.videos || refAudios.length > REF_LIMITS.audios || totalRefs > REF_LIMITS.total) {
-      throw new Error(`参考素材超限：图片≤${REF_LIMITS.images}、视频≤${REF_LIMITS.videos}、音频≤${REF_LIMITS.audios}、总数≤${REF_LIMITS.total}`)
+      throw new Error(`Reference limit exceeded: images ≤${REF_LIMITS.images}, videos ≤${REF_LIMITS.videos}, audios ≤${REF_LIMITS.audios}, total ≤${REF_LIMITS.total}`)
     }
 
     const content: any[] = [{ type: 'text', text: prompt }]

@@ -38,7 +38,7 @@ export function startExtraction(episodeId: number, dramaId: number, target: Extr
   logTaskStart('Extract', target, { episodeId, dramaId, model: opts.model || undefined, configId: opts.configId || undefined })
   ;(async () => {
     const agent = mastra.getAgent('extractor')
-    if (!agent) throw new Error('提取 Agent 不可用')
+    if (!agent) throw new Error('Extraction agent is unavailable')
     const requestContext = buildAgentRequestContext({
       episodeId,
       dramaId,
@@ -75,7 +75,7 @@ export function startExtraction(episodeId: number, dramaId: number, target: Extr
     .catch((err: any) => {
       task.status = 'error'
       task.finished_at = new Date().toISOString()
-      task.error = err?.message || '提取失败'
+      task.error = err?.message || 'Extraction failed'
       logTaskError('Extract', target, { episodeId, error: err?.message })
     })
   return true

@@ -31,7 +31,7 @@ export async function waitForBackend(port: number, timeoutMs = 60_000, shouldSto
   const deadline = Date.now() + timeoutMs
   let lastError = ''
   while (Date.now() < deadline) {
-    if (shouldStop()) throw new Error('启动已取消')
+    if (shouldStop()) throw new Error('Startup canceled')
     try {
       await probeHealth(port, Math.min(1000, Math.max(1, deadline - Date.now())))
       return
@@ -39,7 +39,7 @@ export async function waitForBackend(port: number, timeoutMs = 60_000, shouldSto
     const remaining = deadline - Date.now()
     if (remaining > 0) await new Promise(resolve => setTimeout(resolve, Math.min(300, remaining)))
   }
-  throw new Error(`后台服务在 ${Math.round(timeoutMs / 1000)} 秒内未就绪：${lastError}`)
+  throw new Error(`Backend service was not ready within ${Math.round(timeoutMs / 1000)} seconds: ${lastError}`)
 }
 
 export function redactStartupLog(value: unknown): string {

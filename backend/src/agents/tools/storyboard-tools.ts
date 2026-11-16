@@ -78,7 +78,7 @@ async function validateStoryboardBindings(episodeId: number, dramaId: number, sc
   if (sceneId != null && !episodeSceneIds.has(sceneId)) {
     const [scene] = await db.select().from(schema.scenes).where(eq(schema.scenes.id, sceneId))
     if (!scene || scene.dramaId !== dramaId || scene.deletedAt) {
-      throw new Error(`scene_id ${sceneId} 不属于当前项目`)
+      throw new Error(`scene_id ${sceneId} does not belong to the current project`)
     }
     await db.insert(schema.episodeScenes).values({ episodeId, sceneId, createdAt: now() })
   }
@@ -88,7 +88,7 @@ async function validateStoryboardBindings(episodeId: number, dramaId: number, sc
     if (episodeCharacterIds.has(characterId)) continue
     const [character] = await db.select().from(schema.characters).where(eq(schema.characters.id, characterId))
     if (!character || character.dramaId !== dramaId || character.deletedAt) {
-      throw new Error(`character_id ${characterId} 不属于当前项目`)
+      throw new Error(`character_id ${characterId} does not belong to the current project`)
     }
     await db.insert(schema.episodeCharacters).values({ episodeId, characterId, createdAt: now() })
   }
@@ -98,7 +98,7 @@ async function validateStoryboardBindings(episodeId: number, dramaId: number, sc
     if (episodePropIds.has(propId)) continue
     const [prop] = await db.select().from(schema.props).where(eq(schema.props.id, propId))
     if (!prop || prop.dramaId !== dramaId || prop.deletedAt) {
-      throw new Error(`prop_id ${propId} 不属于当前项目`)
+      throw new Error(`prop_id ${propId} does not belong to the current project`)
     }
     await db.insert(schema.episodeProps).values({ episodeId, propId, createdAt: now() })
   }

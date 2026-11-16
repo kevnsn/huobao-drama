@@ -93,7 +93,7 @@ export class OpenAIImageAdapter implements ImageProviderAdapter {
       form.append('image[]', new Blob([buffer], { type: parsed.mimeType }), `reference-${++appended}.${ext}`)
     }
     if (!appended) {
-      throw new Error('参考图片无法解析为可上传的文件（仅支持 data URL 形式的图片）')
+      throw new Error('Reference image cannot be parsed as an uploadable file (only data URL images are supported)')
     }
 
     return {

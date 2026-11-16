@@ -100,7 +100,7 @@ export async function generateImageThumb(relativePath: string): Promise<string |
       .toFile(getAbsolutePath(thumbRel))
     return thumbRel
   } catch (err) {
-    console.warn(`[storage] 缩略图生成失败 ${relativePath}:`, (err as Error).message)
+    console.warn(`[storage] Thumbnail generation failed ${relativePath}:`, (err as Error).message)
     return null
   }
 }
@@ -136,7 +136,7 @@ export async function fetchImageAsCompressedDataUrl(
   } = {},
 ): Promise<string> {
   const resp = await fetch(url, { signal: AbortSignal.timeout(30_000) })
-  if (!resp.ok) throw new Error(`下载参考图失败: HTTP ${resp.status}`)
+  if (!resp.ok) throw new Error(`Failed to download reference image: HTTP ${resp.status}`)
   return compressImageAsDataUrl(Buffer.from(await resp.arrayBuffer()), options)
 }
 

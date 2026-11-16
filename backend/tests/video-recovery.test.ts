@@ -74,7 +74,7 @@ test('restart resumes persisted results, leaves unknown submissions for manual r
   assert.equal(row(latest.id).status,'completed')
   assert.equal(db.select().from(schema.storyboards).where(eq(schema.storyboards.id,sb.id)).get()!.videoUrl,'static/videos/newer.mp4')
   assert.equal(submissionCount,1)
-  await assert.rejects(recoverVideoTask(unknown.id),/未保存上游任务编号/)
+  await assert.rejects(recoverVideoTask(unknown.id),/Upstream task ID was not saved/)
 })
 
 test('expired signed result is refreshed through the original task query without generating',async()=>{
@@ -99,7 +99,7 @@ test('response header preserves recovery ID when response JSON is interrupted; c
   const id=await generateVideo({prompt:'test',configId:config.id})
   await waitFor(id,'failed');assert.equal(row(id).taskId,'gateway-known')
   db.update(schema.aiServiceConfigs).set({baseUrl:'https://different.example'}).where(eq(schema.aiServiceConfigs.id,config.id)).run()
-  await assert.rejects(recoverVideoTask(id),/原视频服务配置/)
+  await assert.rejects(recoverVideoTask(id),/original video service configuration/)
   db.update(schema.aiServiceConfigs).set({baseUrl:base}).where(eq(schema.aiServiceConfigs.id,config.id)).run()
 })
 

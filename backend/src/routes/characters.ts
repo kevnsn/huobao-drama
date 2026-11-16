@@ -17,13 +17,13 @@ const CHARACTER_IMAGE_SIZE = '1920x1080'
 
 // 用户上传的角色音色样本独立于生图和 AI 提取，跨剧集复用同一个角色绑定。
 app.post('/:id/voice', bodyLimit({ maxSize: AUDIO_MAX_BYTES + 64 * 1024,
-  onError: c => badRequest(c, '音频文件大小不能超过 20MB'),
+  onError: c => badRequest(c, 'Audio file must not exceed 20MB'),
 }), async c => {
   const id = Number(c.req.param('id'))
-  if (!Number.isSafeInteger(id) || id <= 0) return badRequest(c, '角色编号无效')
+  if (!Number.isSafeInteger(id) || id <= 0) return badRequest(c, 'Invalid character ID')
   const condition = and(eq(schema.characters.id, id), isNull(schema.characters.deletedAt))
   const char = db.select({ id: schema.characters.id }).from(schema.characters).where(condition).get()
-  if (!char) return notFound(c, '角色不存在')
+  if (!char) return notFound(c, 'Character not found')
   let uploadedPath: string | undefined
   try {
     const body = await c.req.parseBody()
@@ -34,7 +34,7 @@ app.post('/:id/voice', bodyLimit({ maxSize: AUDIO_MAX_BYTES + 64 * 1024,
       .where(condition).returning({ id: schema.characters.id }).get()
     if (!updated) {
       await fs.unlink(getAbsolutePath(audio.path))
-      return notFound(c, '角色不存在')
+      return notFound(c, 'Character not found')
     }
     return success(c, { voice_audio_url: audio.path, voice_audio_name: audio.name })
   } catch (error) {
@@ -47,20 +47,20 @@ app.post('/:id/voice', bodyLimit({ maxSize: AUDIO_MAX_BYTES + 64 * 1024,
 // 只移除角色绑定，不删除可能仍被引用的媒体文件。
 app.delete('/:id/voice', async c => {
   const id = Number(c.req.param('id'))
-  if (!Number.isSafeInteger(id) || id <= 0) return badRequest(c, '角色编号无效')
+  if (!Number.isSafeInteger(id) || id <= 0) return badRequest(c, 'Invalid character ID')
   const updated = db.update(schema.characters)
     .set({ voiceAudioUrl: null, voiceAudioName: null, updatedAt: now() })
     .where(and(eq(schema.characters.id, id), isNull(schema.characters.deletedAt)))
     .returning({ id: schema.characters.id }).get()
-  if (!updated) return notFound(c, '角色不存在')
+  if (!updated) return notFound(c, 'Character not found')
   return success(c, { voice_audio_url: null, voice_audio_name: null })
 })
 
 // POST /characters — 手动新增角色（传入 episode_id 时关联到该集）
 app.post('/', async (c) => {
   const body = await c.req.json()
-  if (!body.drama_id) return badRequest(c, 'drama_id 必填')
-  if (!body.name?.trim()) return badRequest(c, '名称必填')
+  if (!body.drama_id) return badRequest(c, 'drama_id is required')
+  if (!body.name?.trim()) return badRequest(c, 'Name is required')
   const ts = now()
   const res = await db.insert(schema.characters).values({
     name: body.name.trim(),
@@ -127,11 +127,11 @@ app.post('/:id/generate-image', async (c) => {
   const id = Number(c.req.param('id'))
   const body = await c.req.json()
   const [char] = await db.select().from(schema.characters).where(eq(schema.characters.id, id))
-  if (!char) return badRequest(c, '角色不存在')
-  if (!body.episode_id) return badRequest(c, 'episode_id 必填')
+  if (!char) return badRequest(c, 'Character not found')
+  if (!body.episode_id) return badRequest(c, 'episode_id is required')
 
   const [ep] = await db.select().from(schema.episodes).where(eq(schema.episodes.id, Number(body.episode_id)))
-  if (!ep) return badRequest(c, '剧集不存在')
+  if (!ep) return badRequest(c, 'Episode not found')
 
   const stylePrompt = await getDramaStylePrompt(char.dramaId)
   const finalPrompt = await ensureCharacterFinalPrompt(char, ep.id, false, { model: body.text_model, configId: body.text_config_id ?? undefined })
@@ -152,17 +152,17 @@ app.post('/:id/generate-prompt', async (c) => {
   const id = Number(c.req.param('id'))
   const body = await c.req.json()
   const [char] = await db.select().from(schema.characters).where(eq(schema.characters.id, id))
-  if (!char) return badRequest(c, '角色不存在')
-  if (!body.episode_id) return badRequest(c, 'episode_id 必填')
+  if (!char) return badRequest(c, 'Character not found')
+  if (!body.episode_id) return badRequest(c, 'episode_id is required')
 
   const [ep] = await db.select().from(schema.episodes).where(eq(schema.episodes.id, Number(body.episode_id)))
-  if (!ep) return badRequest(c, '剧集不存在')
+  if (!ep) return badRequest(c, 'Episode not found')
 
   logTaskStart('FinalPrompt', 'character-generate', { characterId: id, episodeId: ep.id, force: !!body.force })
   const finalPrompt = await ensureCharacterFinalPrompt(char, ep.id, !!body.force, { model: body.text_model, configId: body.text_config_id ?? undefined })
   if (!finalPrompt) {
     logTaskError('FinalPrompt', 'character-generate', { characterId: id, error: 'agent returned empty prompt' })
-    return badRequest(c, '最终提示词生成失败，请重试')
+    return badRequest(c, 'Failed to generate the final prompt. Please try again.')
   }
   logTaskSuccess('FinalPrompt', 'character-generate', { characterId: id })
   return success(c, { final_prompt: finalPrompt })
@@ -172,9 +172,9 @@ app.post('/:id/generate-prompt', async (c) => {
 app.post('/batch-generate-images', async (c) => {
   const body = await c.req.json()
   const ids: number[] = body.character_ids || []
-  if (!body.episode_id) return badRequest(c, 'episode_id 必填')
+  if (!body.episode_id) return badRequest(c, 'episode_id is required')
   const [ep] = await db.select().from(schema.episodes).where(eq(schema.episodes.id, Number(body.episode_id)))
-  if (!ep) return badRequest(c, '剧集不存在')
+  if (!ep) return badRequest(c, 'Episode not found')
   const results: number[] = []
   const stylePrompt = await getDramaStylePrompt(ep.dramaId)
   for (const cid of ids) {

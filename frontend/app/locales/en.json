@@ -300,6 +300,7 @@
       "activeCount": "{n} active",
       "hasKey": "Configured",
       "noKey": "No key",
+      "codexLogin": "ChatGPT sign-in",
       "currentDefault": "Current default model",
       "setDefault": "Set as default model for this type",
       "noBaseUrl": "Base URL not set",
@@ -407,7 +408,7 @@
     "cfg": {
       "editTitle": "Edit Service Config",
       "addTitle": "Add {type} Service",
-      "sub": "Pick a template first — a sensible `Base URL` and default models will be filled in automatically.",
+      "sub": "Choose a provider — the endpoint and recommended models are filled in for you.",
       "name": "Config name",
       "namePlaceholder": "e.g. Huobao default image service",
       "provider": "Provider",
@@ -425,7 +426,96 @@
       "reachable": "Endpoint responded",
       "unreachable": "Endpoint failed the test",
       "providerRequired": "Select a provider",
-      "tempInvalid": "Temperature must be a number between 0 and 2"
+      "tempInvalid": "Temperature must be a number between 0 and 2",
+      "apiKeyHint": "Stored only in this app's local database and sent only to the Base URL below.",
+      "baseUrlHint": "Leave as is for the official service. Change it only if you use a proxy or gateway.",
+      "info": {
+        "getKey": "Get an API key",
+        "labels": {
+          "needs": "You need",
+          "billing": "Cost",
+          "models": "Models"
+        },
+        "names": {
+          "codex": "Codex — ChatGPT subscription",
+          "openai": "OpenAI API (or compatible)",
+          "gemini": "Google Gemini",
+          "volcengine": "Volcengine Ark",
+          "openrouter": "OpenRouter",
+          "aliyun": "Alibaba Cloud Wan",
+          "minimax": "MiniMax"
+        },
+        "text": {
+          "codex": {
+            "summary": "Runs the writing agents on your ChatGPT plan, using the Codex sign-in on this machine.",
+            "needs": "Run \"codex login\" in a terminal on this machine once and choose \"Sign in with ChatGPT\". No API key.",
+            "billing": "No per-token charges. Usage counts against your plan's Codex limits.",
+            "models": "Any model your plan offers in Codex. The first one listed is the default."
+          },
+          "gemini": {
+            "summary": "Google's Gemini models through the official API.",
+            "needs": "A Gemini API key from Google AI Studio.",
+            "billing": "Pay per token to Google."
+          },
+          "openai": {
+            "summary": "OpenAI's API, or any OpenAI-compatible endpoint such as DeepSeek or a gateway.",
+            "needs": "An API key for the endpoint in Base URL.",
+            "billing": "Pay per token to whoever runs that endpoint.",
+            "models": "Use the model names that endpoint expects."
+          },
+          "volcengine": {
+            "summary": "Doubao and other models on Volcengine Ark.",
+            "needs": "A Volcengine Ark API key.",
+            "billing": "Pay per token to Volcengine."
+          }
+        },
+        "image": {
+          "codex": {
+            "summary": "Generates images on your ChatGPT plan: a Codex chat model is asked to use ChatGPT's built-in image tool, and the picture it returns is saved.",
+            "needs": "Run \"codex login\" in a terminal on this machine once and choose \"Sign in with ChatGPT\". No API key.",
+            "billing": "No per-image charge. Each image counts against your plan's Codex and image limits.",
+            "models": "This is the chat model that drives the image tool, not an image model — ChatGPT picks the image model itself. The image is requested as landscape, portrait or square to match your project; ChatGPT decides the exact dimensions. Character and scene reference images are passed along. Expect 20–60 seconds per image."
+          },
+          "gemini": {
+            "summary": "Google's Gemini image models through the official API.",
+            "needs": "A Gemini API key from Google AI Studio.",
+            "billing": "Pay per image to Google."
+          },
+          "openai": {
+            "summary": "OpenAI's image API (gpt-image models), or a compatible gateway.",
+            "needs": "An OpenAI API key. This is separate from a ChatGPT subscription.",
+            "billing": "Pay per image to OpenAI."
+          },
+          "volcengine": {
+            "summary": "Seedream image models on Volcengine Ark.",
+            "needs": "A Volcengine Ark API key.",
+            "billing": "Pay per image to Volcengine."
+          }
+        },
+        "video": {
+          "openrouter": {
+            "summary": "One OpenRouter key for many video models — Veo, Seedance, Kling, Wan, Hailuo and more.",
+            "needs": "An OpenRouter API key with credits.",
+            "billing": "Pay per video to OpenRouter. The price depends on the model.",
+            "models": "OpenRouter model IDs such as bytedance/seedance-2.5 or google/veo-3.1-fast. Each model allows different durations and resolutions (Seedance 2.5: 4–30s at 480p or 720p; Veo 3.1: 4, 6 or 8s up to 1080p). The episode screen shows what the selected model accepts and snaps a shot to the closest allowed value."
+          },
+          "volcengine": {
+            "summary": "Seedance 2.0 from Volcengine Ark, with first/last frames and image, video and voice references.",
+            "needs": "A Volcengine Ark API key.",
+            "billing": "Pay per video to Volcengine."
+          },
+          "aliyun": {
+            "summary": "Wan 3.0 from Alibaba Cloud Model Studio.",
+            "needs": "An Alibaba Cloud API key, and your Workspace ID in the Base URL.",
+            "billing": "Pay per video to Alibaba Cloud."
+          },
+          "minimax": {
+            "summary": "MiniMax H3 video with built-in audio.",
+            "needs": "A MiniMax API key.",
+            "billing": "Pay per video to MiniMax."
+          }
+        }
+      }
     },
     "styleDialog": {
       "editTitle": "Edit Style Preset",
@@ -799,6 +889,7 @@
       "params": "Generation Params",
       "duration": "Shot duration",
       "durationUnit": "s (2-30)",
+      "durationAllowed": "{model} accepts {range}; other values snap to the closest one",
       "durationHint": "Edits save to the storyboard instantly and apply to list and batch generation",
       "effective": "{model} · {res} · {dur}s",
       "boundRefs": "Bound References",

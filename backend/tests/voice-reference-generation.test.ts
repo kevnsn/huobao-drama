@@ -83,9 +83,9 @@ test('voice indices follow explicit audio then first appearance; repeats and sha
 })
 
 test('missing, ambiguous and unknown voice mentions fail rather than generating without the requested voice', () => {
-  assert.throws(() => resolveVoiceMentions('#小雨', [{ name: '小雨', voiceAudioUrl: null }]), /尚未上传/)
-  assert.throws(() => resolveVoiceMentions('#未知', []), /无效/)
-  assert.throws(() => resolveVoiceMentions('#小雨', [{ name: '小雨', voiceAudioUrl: 'a' }, { name: '小雨', voiceAudioUrl: 'b' }]), /同名/)
+  assert.throws(() => resolveVoiceMentions('#小雨', [{ name: '小雨', voiceAudioUrl: null }]), /no voice uploaded/)
+  assert.throws(() => resolveVoiceMentions('#未知', []), /Invalid/)
+  assert.throws(() => resolveVoiceMentions('#小雨', [{ name: '小雨', voiceAudioUrl: 'a' }, { name: '小雨', voiceAudioUrl: 'b' }]), /multiple characters named/)
 })
 
 test('inline dialogue keeps speakers and delivery text in place, including repeated and overlapping names', () => {
@@ -96,7 +96,7 @@ test('inline dialogue keeps speakers and delivery text in place, including repea
   assert.equal(result.prompt, '0-3秒：@小雨抬头，小雨（音色参考音频1）轻声说：「早上好。」\n3-6秒：小雨姐姐（音色参考音频2）笑着说：「你好。」小雨（音色参考音频1）低声回应。')
   assert.throws(() => resolveVoiceMentions('#小雨姐姐轻声说：「你好。」', [
     { name: '小雨', voiceAudioUrl: 'a.wav' }, { name: '小雨姐姐', voiceAudioUrl: 'b.wav', bound: false },
-  ]), /未绑定/)
+  ]), /not bound/)
 })
 
 test('saved suffix references remain compatible and do not attach the same voice twice', () => {
@@ -144,7 +144,7 @@ test('unbound, foreign and deleted roles are rejected before creating a generati
   for (const [id, prompt] of [[shot(), '#未绑定'], [shot(foreign), '#外部角色'], [shot(deleted), '#已删除']] as const) {
     const response = await submit(id, prompt)
     assert.equal(response.status, 400)
-    assert.match(await response.text(), /音色引用/)
+    assert.match(await response.text(), /Invalid voice reference/)
   }
   assert.equal(db.select().from(schema.sysTask).all().length, before)
 })
@@ -153,7 +153,7 @@ test('invalid voices, silent mode, missing visual references and provider count 
   const valid = char('有效')
   const before = db.select().from(schema.sysTask).all().length
   for (const [name, url, expected] of [
-    ['丢失', 'static/uploads/missing.wav', /不存在/],
+    ['丢失', 'static/uploads/missing.wav', /not found/],
     ['太短', 'static/uploads/1.wav', /2–15/], ['太长', 'static/uploads/16.wav', /2–15/],
   ] as const) {
     const response = await submit(shot(char(name, url)), `#${name}`)
@@ -167,14 +167,14 @@ test('invalid voices, silent mode, missing visual references and provider count 
   const roles = [1, 2, 3, 4].map(n => char(`角色${n}`, `https://example.test/${n}.wav`))
   const response = await submit(shot(...roles), roles.map(c => `#${c.name}`).join(' '))
   assert.equal(response.status, 400)
-  assert.match(await response.text(), /音频≤3/)
+  assert.match(await response.text(), /audios ≤3/)
   assert.equal(db.select().from(schema.sysTask).all().length, before)
 })
 
 test('sample duration total and traversal are checked, and local M4A is converted and reused', async () => {
   await fs.copyFile(path.join(root, 'static/uploads/9.wav'), path.join(root, 'static/uploads/another.wav'))
-  await assert.rejects(prepareReferenceAudio(['static/uploads/9.wav', 'static/uploads/another.wav'], 'volcengine'), /总时长/)
-  await assert.rejects(prepareReferenceAudio(['static/../outside.wav'], 'volcengine'), /无效/)
+  await assert.rejects(prepareReferenceAudio(['static/uploads/9.wav', 'static/uploads/another.wav'], 'volcengine'), /Total duration/)
+  await assert.rejects(prepareReferenceAudio(['static/../outside.wav'], 'volcengine'), /Invalid/)
   const m4a = path.join(root, 'static/uploads/sample.m4a')
   await new Promise<void>((resolve, reject) => ffmpeg(path.join(root, 'static/uploads/3.wav')).audioCodec('aac')
     .on('end', () => resolve()).on('error', reject).save(m4a))

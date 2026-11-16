@@ -17,7 +17,7 @@ app.put('/content-language', async (c) => {
   const body = await c.req.json().catch(() => null)
   const language = body?.language
   if (!(CONTENT_LANGUAGES as readonly string[]).includes(language)) {
-    return badRequest(c, `language 必须是 ${CONTENT_LANGUAGES.join(' / ')} 之一`)
+    return badRequest(c, `language must be one of ${CONTENT_LANGUAGES.join(' / ')}`)
   }
   const saved = await setContentLanguage(language as ContentLanguage)
   return success(c, { language: saved })
@@ -32,7 +32,7 @@ app.get('/tours-seen', async (c) => {
 app.put('/tours-seen', async (c) => {
   const body = await c.req.json().catch(() => null)
   if (!Array.isArray(body?.seen) || !body.seen.every((v: unknown) => typeof v === 'string')) {
-    return badRequest(c, 'seen 必须是字符串数组')
+    return badRequest(c, 'seen must be an array of strings')
   }
   return success(c, { seen: await setToursSeen(body.seen) })
 })

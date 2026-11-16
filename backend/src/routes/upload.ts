@@ -12,7 +12,7 @@ app.post('/image', async (c) => {
   const file = body['file']
 
   if (!file || !(file instanceof File)) {
-    return badRequest(c, '文件必填')
+    return badRequest(c, 'File is required')
   }
 
   const buffer = await file.arrayBuffer()
@@ -41,18 +41,18 @@ async function saveMediaUpload(
   const body = await c.req.parseBody()
   const file = body['file']
   if (!file || !(file instanceof File)) {
-    return badRequest(c, '文件必填')
+    return badRequest(c, 'File is required')
   }
-  const label = kind === 'video' ? '视频' : '音频'
+  const label = kind === 'video' ? 'video' : 'audio'
   const ext = extOf(file.name)
   // MIME 可伪造，扩展名兜底；空 / octet-stream 视为未知类型，仅按扩展名校验
   const mimeKnown = file.type && file.type !== 'application/octet-stream'
   if (!allowedExt.has(ext) || (mimeKnown && !allowedMime.has(file.type))) {
-    return badRequest(c, `仅支持 ${Array.from(allowedExt).join('/')} 格式的${label}文件`)
+    return badRequest(c, `Only ${Array.from(allowedExt).join('/')} ${label} files are supported`)
   }
   const buffer = await file.arrayBuffer()
   if (buffer.byteLength > maxBytes) {
-    return badRequest(c, `${label}文件大小不能超过 ${Math.round(maxBytes / 1024 / 1024)}MB`)
+    return badRequest(c, `The ${label} file must not exceed ${Math.round(maxBytes / 1024 / 1024)}MB`)
   }
   const path = await saveUploadedFile(buffer, 'uploads', file.name)
   return success(c, { url: `/${path}`, path })
@@ -63,7 +63,7 @@ app.post('/video', async (c) => saveMediaUpload(c, 'video', VIDEO_EXT, VIDEO_MIM
 
 // POST /upload/audio — 参考音频上传（Seedance 多模态参考用）
 app.post('/audio', bodyLimit({ maxSize: AUDIO_MAX_BYTES + 64 * 1024,
-  onError: c => badRequest(c, '音频文件大小不能超过 20MB'),
+  onError: c => badRequest(c, 'Audio file must not exceed 20MB'),
 }), async (c) => {
   try {
     const body = await c.req.parseBody()

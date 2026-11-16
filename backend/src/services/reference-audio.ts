@@ -5,19 +5,19 @@ import { STORAGE_ROOT } from '../utils/paths.js'
 import { ffmpeg, checkFfmpegSuite } from '../utils/ffmpeg.js'
 
 const MAX_BYTES = 15 * 1024 * 1024
-const INLINE_PROVIDERS = new Set(['volcengine', 'minimax'])
+const INLINE_PROVIDERS = new Set(['volcengine', 'minimax', 'openrouter'])
 
 function localAudioPath(url: string): string | null {
   if (!/^\/?static\//.test(url)) return null
   const file = path.resolve(STORAGE_ROOT, url.replace(/^\/?static\//, ''))
-  if (!file.startsWith(path.resolve(STORAGE_ROOT) + path.sep)) throw new Error('无效的本地音色路径')
+  if (!file.startsWith(path.resolve(STORAGE_ROOT) + path.sep)) throw new Error('Invalid local voice path')
   return file
 }
 
 function publicAudioUrl(url: string): string {
   const base = (process.env.PUBLIC_BASE_URL || '').trim().replace(/\/+$/, '')
   if (!/^https?:\/\//.test(base)) {
-    throw new Error('当前视频模型需要公网音色地址。请配置后端 PUBLIC_BASE_URL，或切换至支持本地音色的 Seedance 2.0 / MiniMax H3。')
+    throw new Error('The current video model requires a public voice URL. Set PUBLIC_BASE_URL on the backend, or switch to Seedance 2.0 / MiniMax H3, which support local voices.')
   }
   return `${base}/${url.replace(/^\//, '')}`
 }
@@ -33,31 +33,31 @@ export async function prepareReferenceAudio(refs: string[] | undefined, provider
     if (!file) { prepared.push(url); continue }
     if (!INLINE_PROVIDERS.has(provider)) publicAudioUrl(url)
     let size: number
-    try { size = (await fs.stat(file)).size } catch { throw new Error('角色音色文件不存在，请重新上传音色') }
+    try { size = (await fs.stat(file)).size } catch { throw new Error('Character voice file not found. Please re-upload the voice') }
     const ext = path.extname(file).toLowerCase()
-    if (!['.mp3', '.wav', '.m4a', '.aac'].includes(ext)) throw new Error('参考音色仅支持 MP3、WAV、M4A 或 AAC')
-    if (size > 20 * 1024 * 1024) throw new Error('音色文件过大，请上传不超过 20MB 的音频')
+    if (!['.mp3', '.wav', '.m4a', '.aac'].includes(ext)) throw new Error('Reference voice only supports MP3, WAV, M4A or AAC')
+    if (size > 20 * 1024 * 1024) throw new Error('Voice file is too large. Upload audio of 20MB or less')
     const suite = await checkFfmpegSuite()
-    if (!suite.ffprobe) throw new Error('音色校验需要 FFprobe，请修复后端 FFprobe 配置后重试')
+    if (!suite.ffprobe) throw new Error('Voice validation requires FFprobe. Fix the backend FFprobe configuration and try again')
     const duration = await new Promise<number>((resolve, reject) => {
       ffmpeg.ffprobe(file, (error, metadata) => {
         if (error || !metadata.streams.some(stream => stream.codec_type === 'audio')) {
-          reject(new Error('无法读取音色文件，请上传有效的人声音频')); return
+          reject(new Error('Unable to read the voice file. Upload valid voice audio')); return
         }
         resolve(Number(metadata.format.duration))
       })
     })
     if (!Number.isFinite(duration) || duration < minSeconds || duration > 15) {
-      throw new Error(`当前模型要求每段参考音色为 ${minSeconds}–15 秒，请裁剪或重新上传`)
+      throw new Error(`The current model requires each reference voice to be ${minSeconds}–15 seconds. Trim or re-upload it`)
     }
     durationSum += duration
-    if (durationSum > 15.05) throw new Error('本次引用的音色总时长不能超过 15 秒，请减少引用或缩短音色样本')
+    if (durationSum > 15.05) throw new Error('Total duration of referenced voices must not exceed 15 seconds. Reduce references or shorten the samples')
     if (ext === '.wav' || ext === '.mp3') {
-      if (size > MAX_BYTES) throw new Error('当前模型要求每段参考音色不超过 15MB，请压缩或重新上传')
+      if (size > MAX_BYTES) throw new Error('The current model requires each reference voice to be 15MB or less. Compress or re-upload it')
       prepared.push(url.replace(/^\//, ''))
       continue
     }
-    if (!suite.ffmpeg) throw new Error('M4A / AAC 音色需要 FFmpeg 转换，请修复配置或上传 WAV / MP3')
+    if (!suite.ffmpeg) throw new Error('M4A / AAC voices require FFmpeg conversion. Fix the configuration or upload WAV / MP3')
     const hash = createHash('sha256').update(await fs.readFile(file)).digest('hex')
     const relative = `static/voice-references/${hash}.wav`
     const target = localAudioPath(relative)!
@@ -67,7 +67,7 @@ export async function prepareReferenceAudio(refs: string[] | undefined, provider
       try {
         await new Promise<void>((resolve, reject) => {
           ffmpeg(file).noVideo().audioChannels(1).audioFrequency(48000).audioCodec('pcm_s16le')
-            .format('wav').on('end', () => resolve()).on('error', () => reject(new Error('音色转换失败，请改用 WAV / MP3 文件'))).save(temporary)
+            .format('wav').on('end', () => resolve()).on('error', () => reject(new Error('Voice conversion failed. Use a WAV / MP3 file instead'))).save(temporary)
         })
         await fs.rename(temporary, target)
       } finally { await fs.rm(temporary, { force: true }) }
@@ -88,7 +88,7 @@ export async function resolveReferenceAudioUrls(refs: string[] | undefined, prov
     if (!file) return url
     if (!INLINE_PROVIDERS.has(provider)) return publicAudioUrl(url)
     const bytes = await fs.readFile(file)
-    if (bytes.length > MAX_BYTES) throw new Error('参考音色不能超过 15MB')
+    if (bytes.length > MAX_BYTES) throw new Error('Reference voice must not exceed 15MB')
     const format = path.extname(file).toLowerCase() === '.mp3' ? 'mp3' : 'wav'
     return `data:audio/${format};base64,${bytes.toString('base64')}`
   }))

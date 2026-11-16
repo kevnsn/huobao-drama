@@ -32,7 +32,7 @@ const localFilesystem = () => new LocalFilesystem({ basePath: WORKSPACE_DIR, ins
 try {
   fs.mkdirSync(SKILLS_DIR, { recursive: true })
 } catch (err) {
-  console.warn(`[skills] 工作目录创建失败（只读环境？）: ${(err as Error).message}`)
+  console.warn(`[skills] Failed to create working directory (read-only environment?): ${(err as Error).message}`)
 }
 
 /** 每个 Agent 注册的 skill 目录（相对 workspace/skills/，含子规范目录；目录名需符合 Agent Skills 规范：小写+连字符） */

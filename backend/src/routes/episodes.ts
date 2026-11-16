@@ -12,13 +12,13 @@ const app = new Hono()
 // POST /episodes — Create a new episode
 app.post('/', async (c) => {
   const body = await c.req.json()
-  if (!body.drama_id) return badRequest(c, 'drama_id 必填')
+  if (!body.drama_id) return badRequest(c, 'drama_id is required')
 
   // 图片/视频配置：显式传入优先，缺省时自动锁定当前启用的最高优先级官方配置
   const imageConfigId = body.image_config_id ?? await getActiveConfigId('image')
   const videoConfigId = body.video_config_id ?? await getActiveConfigId('video')
-  if (!imageConfigId) return badRequest(c, '未找到启用的图片生成配置，请先在设置中心添加')
-  if (!videoConfigId) return badRequest(c, '未找到启用的视频生成配置，请先在设置中心添加')
+  if (!imageConfigId) return badRequest(c, 'No enabled image generation config found. Add one in Settings first')
+  if (!videoConfigId) return badRequest(c, 'No enabled video generation config found. Add one in Settings first')
   const ts = now()
 
   // Get next episode number（忽略已软删的集，删除中间集后新集号可复用空位之后的最大值）
@@ -30,7 +30,7 @@ app.post('/', async (c) => {
   const res = await db.insert(schema.episodes).values({
     dramaId: body.drama_id,
     episodeNumber: nextNum,
-    title: body.title || `第${nextNum}集`,
+    title: body.title || `Episode ${nextNum}`,
     imageConfigId,
     videoConfigId,
     // 视频分辨率在创建集时固定（480p/720p/1080p），后续可通过 PUT 修改；各视频适配器再映射为厂商档位
@@ -61,9 +61,9 @@ app.put('/:id', async (c) => {
   for (const key of allowed) {
     if (key in body) updates[key] = body[key]
   }
-  if (Object.keys(updates).length === 0) return badRequest(c, '没有可更新的字段')
+  if (Object.keys(updates).length === 0) return badRequest(c, 'No fields to update')
   if ('resolution' in updates && !['480p', '720p', '1080p'].includes(updates.resolution)) {
-    return badRequest(c, 'resolution 只支持 480p / 720p / 1080p')
+    return badRequest(c, 'resolution only supports 480p / 720p / 1080p')
   }
 
   // Map snake_case to camelCase for drizzle
@@ -83,7 +83,7 @@ app.put('/:id', async (c) => {
 app.delete('/:id', async (c) => {
   const id = Number(c.req.param('id'))
   const [ep] = await db.select().from(schema.episodes).where(eq(schema.episodes.id, id))
-  if (!ep) return notFound(c, '剧集不存在')
+  if (!ep) return notFound(c, 'Episode not found')
   await db.update(schema.episodes).set({ deletedAt: now(), updatedAt: now() })
     .where(eq(schema.episodes.id, id))
   return success(c)
@@ -130,9 +130,9 @@ app.post('/:id/extract', async (c) => {
   const id = Number(c.req.param('id'))
   const body = await c.req.json()
   const target = body.target as ExtractTarget
-  if (!EXTRACT_TARGETS.includes(target)) return badRequest(c, 'target 必须是 characters / scenes / props')
+  if (!EXTRACT_TARGETS.includes(target)) return badRequest(c, 'target must be characters / scenes / props')
   const [ep] = await db.select().from(schema.episodes).where(eq(schema.episodes.id, id))
-  if (!ep) return notFound(c, '剧集不存在')
+  if (!ep) return notFound(c, 'Episode not found')
   const started = startExtraction(ep.id, ep.dramaId, target, { model: body.model || undefined, configId: body.config_id ?? undefined })
   return success(c, { target, status: 'running', already_running: !started })
 })
@@ -148,7 +148,7 @@ app.post('/:id/generate-video-prompts', async (c) => {
   const id = Number(c.req.param('id'))
   const body = await c.req.json().catch(() => ({}))
   const [ep] = await db.select().from(schema.episodes).where(eq(schema.episodes.id, id))
-  if (!ep) return notFound(c, '剧集不存在')
+  if (!ep) return notFound(c, 'Episode not found')
   const storyboardIds = Array.isArray(body.storyboard_ids)
     ? body.storyboard_ids.map(Number).filter((n: number) => Number.isInteger(n) && n > 0)
     : undefined
@@ -218,7 +218,7 @@ app.get('/:episode_id/storyboards', async (c) => {
 app.get('/:id/generation-tasks', async (c) => {
   const episodeId = Number(c.req.param('id'))
   const [ep] = await db.select().from(schema.episodes).where(eq(schema.episodes.id, episodeId))
-  if (!ep) return notFound(c, '剧集不存在')
+  if (!ep) return notFound(c, 'Episode not found')
 
   const sbs = await db.select().from(schema.storyboards).where(eq(schema.storyboards.episodeId, episodeId))
   const storyboardIds = new Set(sbs.map(s => s.id))
@@ -259,7 +259,7 @@ app.get('/:id/generation-tasks', async (c) => {
 app.get('/:id/pipeline-status', async (c) => {
   const episodeId = Number(c.req.param('id'))
   const [ep] = await db.select().from(schema.episodes).where(eq(schema.episodes.id, episodeId))
-  if (!ep) return notFound(c, '剧集不存在')
+  if (!ep) return notFound(c, 'Episode not found')
 
   const chars = await db.select().from(schema.characters).where(eq(schema.characters.dramaId, ep.dramaId))
   const scenes = await db.select().from(schema.scenes).where(eq(schema.scenes.dramaId, ep.dramaId))

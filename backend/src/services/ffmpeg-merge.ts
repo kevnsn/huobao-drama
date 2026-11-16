@@ -38,21 +38,21 @@ export async function mergeEpisodeVideos(episodeId: number, dramaId: number, sto
     .map(sb => ({ sb, url: sb.videoUrl || sb.composedVideoUrl }))
     .filter(c => Boolean(c.url)) as { sb: typeof storyboards[number]; url: string }[]
 
-  if (clips.length === 0) throw new Error('所选镜头还没有可拼接的视频')
+  if (clips.length === 0) throw new Error('The selected shots have no videos to merge yet')
 
   // 拼接前探测 ffmpeg：二进制损坏时 fluent-ffmpeg 的同步 EFTYPE 会崩掉整个进程，
   // 这里提前拦截并给出可操作的修复指引（路由层会作为 400 返回前端）
   const suite = await checkFfmpegSuite()
   if (!suite.ffmpeg || !suite.ffprobe) {
-    throw new Error('本机 ffmpeg 不可用，无法拼接视频（常见于 node_modules 跨平台拷贝或 ffmpeg-static 下载损坏）。请删除 node_modules 后在本机重新 npm install，或设置 FFMPEG_BIN 指向有效的 ffmpeg 可执行文件后重启服务')
+    throw new Error('Local ffmpeg is unavailable, so videos cannot be merged (commonly caused by copying node_modules across platforms or a corrupted ffmpeg-static download). Delete node_modules and run npm install again on this machine, or set FFMPEG_BIN to a valid ffmpeg executable and restart the service')
   }
 
   // 校验视频文件真实存在:DB 里的 video_url 可能指向已被清理的文件,
   // 直接拼会得到 ffmpeg 的 "No such file or directory" 晦涩报错
   const missing = clips.filter(c => !fs.existsSync(toAbsPath(c.url)))
   if (missing.length > 0) {
-    const nums = missing.map(c => `S${c.sb.storyboardNumber}`).join('、')
-    throw new Error(`镜头 ${nums} 的视频文件已丢失（本地文件不存在），请重新生成这些镜头的视频，或在拼接时取消勾选`)
+    const nums = missing.map(c => `S${c.sb.storyboardNumber}`).join(', ')
+    throw new Error(`The video files for shots ${nums} are missing (local files not found). Regenerate those shots' videos, or deselect them when merging`)
   }
 
   const videos = clips.map(c => c.url)

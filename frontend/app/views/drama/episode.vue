@@ -816,14 +816,15 @@
                         <input
                           :value="selectedSb.duration || 10"
                           type="number"
-                          min="2"
-                          max="30"
+                          :min="durationChoices ? durationChoices[0] : 2"
+                          :max="durationChoices ? durationChoices[durationChoices.length - 1] : 30"
                           class="input video-duration-input"
                           @change="onVideoDurationChange"
                         />
-                        <span class="video-param-unit">{{ t('episode.inspector.durationUnit') }}</span>
+                        <span class="video-param-unit">{{ durationRangeLabel ? 's' : t('episode.inspector.durationUnit') }}</span>
                       </span>
                     </div>
+                    <div v-if="durationRangeLabel" class="video-param-hint">{{ t('episode.inspector.durationAllowed', { model: effectiveVideoModelLabel, range: durationRangeLabel }) }}</div>
                     <div class="video-param-hint">{{ t('episode.inspector.durationHint') }}</div>
                   </section>
                   <div class="video-inspector-effective">
@@ -2120,21 +2121,46 @@ const RESOLUTION_TIERS = {
   volcengine: ['480p', '720p'],
   minimax: ['720p', '1080p'],
   aliyun: ['480p', '720p', '1080p'],
+  openrouter: ['480p', '720p', '1080p'],
 }
 const RESOLUTION_DISPLAY = {
   volcengine: { '480p': '480p', '720p': '720p', '1080p': '720p' },
   minimax: { '480p': '768P', '720p': '768P', '1080p': '2K' },
   aliyun: { '480p': '480P', '720p': '720P', '1080p': '1080P' },
+  openrouter: { '480p': '480p', '720p': '720p', '1080p': '1080p' },
 }
 const resolutionProvider = computed(() => RESOLUTION_TIERS[selectedVideoConfig.value?.provider] ? selectedVideoConfig.value.provider : 'volcengine')
-const resolutionOptions = computed(() => RESOLUTION_TIERS[resolutionProvider.value].map(key => ({
+// OpenRouter: each model has its own allowed durations and resolutions (loaded from the backend)
+const openRouterVideoModels = ref({})
+const videoModelLimits = computed(() => selectedVideoConfig.value?.provider === 'openrouter'
+  ? openRouterVideoModels.value[effectiveVideoModelLabel.value] : undefined)
+const resolutionTiers = computed(() => {
+  const all = RESOLUTION_TIERS[resolutionProvider.value]
+  const own = all.filter(key => videoModelLimits.value?.resolutions?.includes(key))
+  return own.length ? own : all
+})
+const durationChoices = computed(() => videoModelLimits.value?.durations?.length ? videoModelLimits.value.durations : null)
+function fitDuration(value) {
+  const list = durationChoices.value
+  const v = Math.round(Number(value))
+  if (!list) return Math.min(30, Math.max(2, v))
+  return list.reduce((best, d) => Math.abs(d - v) < Math.abs(best - v) ? d : best)
+}
+const durationRangeLabel = computed(() => {
+  const list = durationChoices.value
+  if (!list) return ''
+  const contiguous = list.every((d, i) => i === 0 || d === list[i - 1] + 1)
+  return contiguous ? `${list[0]}–${list[list.length - 1]}s` : list.map(d => `${d}s`).join(' / ')
+})
+const resolutionOptions = computed(() => resolutionTiers.value.map(key => ({
   key,
   model: `${RESOLUTION_DISPLAY[resolutionProvider.value][key]} · ${t(`episode.resolution.${key === '480p' ? 'smooth' : key === '720p' ? 'hd' : 'uhd'}`)}`,
 })))
 const episodeResolution = computed({
   get: () => {
     const v = episode.value?.resolution
-    return resolutionOptions.value.some(o => o.key === v) ? v : '720p'
+    if (resolutionOptions.value.some(o => o.key === v)) return v
+    return resolutionOptions.value.some(o => o.key === '720p') ? '720p' : resolutionOptions.value[0].key
   },
   set: (val) => { void changeEpisodeResolution(val) },
 })
@@ -2218,7 +2244,7 @@ const episodeResolutionLabel = computed(() =>
 // 短档位标签（480p / 768P / 2K 等厂商原生档位），用于底部生效配置小结
 const episodeResolutionShort = computed(() =>
   RESOLUTION_DISPLAY[resolutionProvider.value][episodeResolution.value] || episodeResolution.value)
-const effectiveVideoDuration = computed(() => Number(selectedSb.value?.duration || 10))
+const effectiveVideoDuration = computed(() => fitDuration(selectedSb.value?.duration || 10))
 const batchVideoTotalDuration = computed(() =>
   batchVideoConfirm.value.targets.reduce((sum, sb) => sum + (Number(sb.duration) || 5), 0))
 
@@ -2729,9 +2755,9 @@ async function refresh() {
 
 function saveRaw() { episodeAPI.update(epId.value, { content: localRaw.value }); episode.value.content = localRaw.value }
 function saveScr() { episodeAPI.update(epId.value, { script_content: localScript.value }); episode.value.script_content = localScript.value }
-// 发给 Agent 的 message 是功能性提示词而非 UI 文案：产出语言由后端全局「内容语言」指令控制，
-// 这里保持中文不随界面语言变化
-function doRewrite() { saveRaw(); runAgent('script_rewriter', '请读取剧本并改写为格式化剧本，然后保存', dramaId, epId.value, refresh, chatModelOverride(), chatConfigId()) }
+// Messages sent to agents are functional prompts, not UI copy: the output language is governed by
+// the backend's global content-language directive, so these stay fixed regardless of UI locale.
+function doRewrite() { saveRaw(); runAgent('script_rewriter', 'Read the script, rewrite it as a formatted screenplay, then save it.', dramaId, epId.value, refresh, chatModelOverride(), chatConfigId()) }
 function skipRewrite() {
   const raw = (localRaw.value || rawContent.value || '').trim()
   if (!raw) {
@@ -2873,26 +2899,26 @@ function pollVideoPromptBatch(attempts = 240) {
 }
 function doBreakdown() {
   const charList = chars.value.length
-    ? chars.value.map(c => `${c.name}(ID:${c.id})`).join('、')
-    : '（当前集还没有角色）'
+    ? chars.value.map(c => `${c.name}(ID:${c.id})`).join(', ')
+    : '(this episode has no characters yet)'
   const sceneList = scenes.value.length
-    ? scenes.value.map(s => `${s.location} · ${s.time || '未设时间'}(ID:${s.id})`).join('、')
-    : '（当前集还没有场景）'
+    ? scenes.value.map(s => `${s.location} · ${s.time || 'no time set'}(ID:${s.id})`).join(', ')
+    : '(this episode has no scenes yet)'
   const propList = propItems.value.length
-    ? propItems.value.map(p => `${p.name}(ID:${p.id})`).join('、')
-    : '（当前集还没有道具）'
-  runAgent('storyboard_breaker', `请基于当前集剧本拆分分镜，并为每个分镜段落同时生成 video_prompt（视频生成提示词）。
-本次视频模型：${effectiveVideoModelLabel.value}，请按该模型的特性与时长限制生成 video_prompt。
+    ? propItems.value.map(p => `${p.name}(ID:${p.id})`).join(', ')
+    : '(this episode has no props yet)'
+  runAgent('storyboard_breaker', `Break the current episode's script into storyboard segments, and generate a video_prompt (video generation prompt) for each segment at the same time.
+Video model for this run: ${effectiveVideoModelLabel.value}. Write each video_prompt to suit this model's characteristics and duration limits.
 
-当前集已有角色：${charList}
-当前集已有场景：${sceneList}
-当前集已有道具：${propList}
+Existing characters in this episode: ${charList}
+Existing scenes in this episode: ${sceneList}
+Existing props in this episode: ${propList}
 
-绑定要求：
-- 每个镜头必须根据剧本内容，从上述当前集已有角色中选出出场的角色绑定 character_ids（ID 必须来自上述列表；有角色出场就必须绑定，不要遗漏）
-- 每个镜头尽量匹配上述已有场景填写 scene_id（ID 必须来自上述列表），不要凭空创造新场景
-- 每个镜头出现关键道具（被使用、交接、特写或在画面中明显可见）时，从上述当前集已有道具中绑定 prop_ids（ID 必须来自上述列表）；没有道具出现可传空数组
-- 只有纯环境空镜头才可以不绑定角色`, dramaId, epId.value, onBreakdownDone, chatModelOverride(), chatConfigId())
+Binding requirements:
+- For every shot, pick the characters who appear (per the script) from the existing characters above and bind them in character_ids (IDs must come from the list above; whenever a character appears it must be bound — do not miss any)
+- For every shot, match one of the existing scenes above for scene_id where possible (the ID must come from the list above); do not invent new scenes
+- When a key prop appears in a shot (used, handed over, shown in close-up or clearly visible), bind it in prop_ids from the existing props above (IDs must come from the list above); pass an empty array when no prop appears
+- Only pure establishing/environment shots may have no characters bound`, dramaId, epId.value, onBreakdownDone, chatModelOverride(), chatConfigId())
 }
 
 /** 拆分完成后刷新并自动补齐缺失的视频提示词（兜住 Agent 漏写/截断） */
@@ -2907,17 +2933,17 @@ async function genVideoPrompt(sb) {
   if (!sb || videoPromptGeneratingIds.value.includes(sb.id)) return
   const idx = sbs.value.indexOf(sb) + 1
   const cfg = selectedVideoConfig.value
-  const label = cfg ? `${cfg.name} (${cfg.provider})` : '默认'
-  const charNames = getStoryboardCharacters(sb).map(c => c.name).join('、') || '无'
-  const propNames = getStoryboardProps(sb).map(p => p.name).join('、') || '无'
+  const label = cfg ? `${cfg.name} (${cfg.provider})` : 'default'
+  const charNames = getStoryboardCharacters(sb).map(c => c.name).join(', ') || 'none'
+  const propNames = getStoryboardProps(sb).map(p => p.name).join(', ') || 'none'
   videoPromptGeneratingIds.value.push(sb.id)
   try {
     await api.post(`/agent/prompt_generator/chat`, {
-      message: `请为分镜 #${idx}(ID:${sb.id})生成视频提示词(video_prompt)。视频模型:${label},请根据该模型的特性和时长限制生成。
+      message: `Generate the video prompt (video_prompt) for storyboard #${idx} (ID:${sb.id}). Video model: ${label} — write it to suit this model's characteristics and duration limits.
 
-该分镜信息:时长 ${sb.duration || 10}s;场景:${getSceneName(sb) || '未绑定'};角色:${charNames};道具:${propNames}。
+Storyboard info: duration ${sb.duration || 10}s; scene: ${getSceneName(sb) || 'not bound'}; characters: ${charNames}; props: ${propNames}.
 
-请先调用 read_storyboard_context 获取该分镜的画面描述(含【镜头N】子镜头与台词/旁白)、氛围及时长,据此生成 video_prompt(按 3 秒分段换行、用 @角色名/@场景名/@道具名 引用参考素材；段落内允许多镜头切镜,但不跨场景,切镜点对齐 description 的【镜头N】结构),然后调用 update_storyboard 保存到分镜 ID:${sb.id}。只更新 video_prompt 字段,不要改动其他字段,不要重新拆分整集。`,
+First call read_storyboard_context to get this storyboard's visual description (including the 【镜头N】 sub-shots and dialogue/narration), atmosphere and duration. From that, generate the video_prompt (split into 3-second segments, one per line; reference assets with @CharacterName / @SceneName / @PropName using the exact names; cuts between shots are allowed within the segment but never across scenes, and cut points must align with the 【镜头N】 structure of the description), then call update_storyboard to save it to storyboard ID:${sb.id}. Update only the video_prompt field — do not change any other field and do not re-break the whole episode.`,
       drama_id: dramaId,
       episode_id: epId.value,
       model: chatModelOverride() || undefined,
@@ -3316,11 +3342,9 @@ function resolveVideoPromptRefs(sb) {
 function onVideoDurationChange(e) {
   const sb = selectedSb.value
   if (!sb) return
-  const min = 2
-  const max = 30
   let v = Math.round(Number(e.target.value))
   if (!Number.isFinite(v)) v = Number(sb.duration || 10)
-  v = Math.min(max, Math.max(min, v))
+  v = fitDuration(v)
   e.target.value = v
   updateField(sb, 'duration', v)
 }
@@ -3473,6 +3497,9 @@ async function loadConfigs() {
     imageConfigs.value = imgCfgs || []
     videoConfigs.value = vidCfgs || []
     textConfigs.value = txtCfgs || []
+    if (videoConfigs.value.some(c => c.provider === 'openrouter')) {
+      openRouterVideoModels.value = await aiConfigAPI.openRouterVideoModels() || {}
+    }
   } catch (e) { console.error('Failed to load AI configs', e) }
 }
 

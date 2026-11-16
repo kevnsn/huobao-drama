@@ -34,7 +34,7 @@ app.get('/', async (c) => {
 // is_default=true 表示当前语言无独立文件（内容为回退版本），前端据此提示「跟随中文」
 app.get('/:type', async (c) => {
   const type = c.req.param('type')
-  if (!checkType(type)) return badRequest(c, '未知的 Agent 类型')
+  if (!checkType(type)) return badRequest(c, 'Unknown agent type')
   const lang = normalizeLang(c.req.query('lang'))
   const [file, base] = await Promise.all([
     loadAgentPromptFile(type, lang),
@@ -65,11 +65,11 @@ app.get('/:type', async (c) => {
 // PUT /prompts/:type?lang= — 保存为 prompt 文件（lang 非 zh 写语言变体；model 只随基础版保存）
 app.put('/:type', async (c) => {
   const type = c.req.param('type')
-  if (!checkType(type)) return badRequest(c, '未知的 Agent 类型')
+  if (!checkType(type)) return badRequest(c, 'Unknown agent type')
   const body = await c.req.json()
   const lang = normalizeLang(c.req.query('lang') ?? body.lang)
   const instructions = String(body.system_prompt ?? '').trim()
-  if (!instructions) return badRequest(c, 'system_prompt 必填')
+  if (!instructions) return badRequest(c, 'system_prompt is required')
   if (lang === 'zh') {
     const name = String(body.name || DEFAULT_PROMPTS[type].name)
     const model = String(body.model ?? '').trim()
@@ -86,7 +86,7 @@ app.put('/:type', async (c) => {
 // POST /prompts/:type/reset?lang= — 删除对应语言文件，回退（变体→基础版；基础版→代码默认）
 app.post('/:type/reset', async (c) => {
   const type = c.req.param('type')
-  if (!checkType(type)) return badRequest(c, '未知的 Agent 类型')
+  if (!checkType(type)) return badRequest(c, 'Unknown agent type')
   const lang = normalizeLang(c.req.query('lang'))
   const path = promptFilePath(type, lang)
   if (await fsm().exists(path)) await fsm().deleteFile(path)

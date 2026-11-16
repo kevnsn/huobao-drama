@@ -35,7 +35,7 @@ db.update(schema.characters).set({ deletedAt: ts }).where(eq(schema.characters.i
 const sb = db.insert(schema.storyboards).values({ episodeId: ep.id, storyboardNumber: 1,
   description: '【镜头1】林小雨说：「早上好。」陈默点头。', atmosphere: '晨光', duration: 6, videoPrompt: '原提示词', ...timestamps }).returning().get()
 for (const c of [speaker, silent, noVoice, deleted]) db.insert(schema.storyboardCharacters).values({ storyboardId: sb.id, characterId: c.id }).run()
-const requestContext = buildAgentRequestContext({ dramaId: drama.id, episodeId: ep.id })
+const requestContext = buildAgentRequestContext({ dramaId: drama.id, episodeId: ep.id, language: 'zh' })
 const call = (name: keyof typeof storyboardTools, input: any) => (storyboardTools[name].execute as any)(input, { requestContext })
 const row = () => db.select().from(schema.storyboards).where(eq(schema.storyboards.id, sb.id)).get()!
 
@@ -99,14 +99,14 @@ test('a generated voice binding saves editable tokens and resolves to the corres
 test('invented, unbound, removed and missing voice references cannot replace a saved prompt', async () => {
   const before = row().videoPrompt
   for (const name of ['虚构角色', unbound.name, noVoice.name, deleted.name]) {
-    await assert.rejects(call('updateStoryboard', { storyboard_id: sb.id, video_prompt: `音色：#${name}` }), /音色/)
+    await assert.rejects(call('updateStoryboard', { storyboard_id: sb.id, video_prompt: `音色：#${name}` }), /voice/)
     assert.equal(row().videoPrompt, before)
   }
   db.update(schema.characters).set({ voiceAudioUrl: null }).where(eq(schema.characters.id, speaker.id)).run()
   try {
     const context = await call('readStoryboardContext', {})
     assert.equal(context.existing_storyboards[0].available_voice_references.some((v: any) => v.character_id === speaker.id), false)
-    await assert.rejects(call('updateStoryboard', { storyboard_id: sb.id, video_prompt: '#林小雨' }), /尚未上传/)
+    await assert.rejects(call('updateStoryboard', { storyboard_id: sb.id, video_prompt: '#林小雨' }), /no voice uploaded/)
     assert.equal(row().videoPrompt, before)
   } finally { db.update(schema.characters).set({ voiceAudioUrl: speaker.voiceAudioUrl }).where(eq(schema.characters.id, speaker.id)).run() }
 })
@@ -115,7 +115,7 @@ test('initial breakdown validates voices before replacement and persists valid b
   const before = row().videoPrompt
   await assert.rejects(call('saveStoryboards', { replace_existing: true, storyboards: [
     { shot_number: 1, character_ids: [speaker.id], video_prompt: '#虚构角色' },
-  ] }), /音色/)
+  ] }), /voice/)
   assert.equal(row().videoPrompt, before)
   await call('saveStoryboards', { storyboards: [
     { shot_number: 2, character_ids: [speaker.id], description: '林小雨说：「再见。」', video_prompt: '0-3秒：@林小雨挥手，#林小雨说：「再见。」' },

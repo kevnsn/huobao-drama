@@ -31,7 +31,7 @@ test('style presets route is mounted and implements CRUD', () => {
   assert.match(route, /app\.delete\('\/:id'/)
   // value 唯一约束 + 格式校验 + 查重
   assert.match(route, /VALUE_PATTERN/)
-  assert.match(route, /风格 key 已存在/)
+  assert.match(route, /Style key already exists/)
   // GET 支持 ?all=1 且默认过滤停用项
   assert.match(route, /query\('all'\)/)
   assert.match(route, /r\.isActive/)

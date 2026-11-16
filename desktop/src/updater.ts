@@ -85,20 +85,20 @@ async function fetchFeed(): Promise<{ version: string, notes?: string, platforms
       const res = await fetch(url, { signal: AbortSignal.timeout(15_000) })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const feed = await res.json()
-      if (!feed?.version || !feed?.platforms) throw new Error('版本清单格式不正确')
+      if (!feed?.version || !feed?.platforms) throw new Error('Invalid version manifest format')
       return feed
     } catch (err) {
       lastError = err
     }
   }
-  throw new Error(`版本清单请求失败（已尝试 ${FEED_URLS.length} 个源）：${(lastError as Error)?.message ?? ''}`)
+  throw new Error(`Version manifest request failed (tried ${FEED_URLS.length} sources): ${(lastError as Error)?.message ?? ''}`)
 }
 
 // ---- 检查 ----
 
 async function doCheck(): Promise<UpdateState> {
   if (!app.isPackaged) {
-    setState({ status: 'error', error: '开发模式不支持更新' })
+    setState({ status: 'error', error: 'Updates are not supported in development mode' })
     return state
   }
   setState({ status: 'checking', error: undefined })
@@ -121,16 +121,16 @@ async function doCheck(): Promise<UpdateState> {
 
 async function doDownload(): Promise<UpdateState> {
   if (state.status !== 'available' && state.status !== 'downloaded') {
-    throw new Error('当前没有可下载的更新')
+    throw new Error('No update available to download')
   }
   const feed = await fetchFeed()
   const asset = feed.platforms[platformKey()]
-  if (!asset) throw new Error(`暂未提供 ${platformKey()} 平台的更新包`)
+  if (!asset) throw new Error(`No update package is available for ${platformKey()} yet`)
 
   setState({ status: 'downloading', downloadProgress: 0 })
   // 大文件下载不设整体超时（progress 由流驱动）；网络中断会触发 fetch 异常走 error
   const res = await fetch(asset.url)
-  if (!res.ok || !res.body) throw new Error(`更新包下载失败（HTTP ${res.status}）`)
+  if (!res.ok || !res.body) throw new Error(`Update download failed (HTTP ${res.status})`)
 
   const total = asset.size || Number(res.headers.get('content-length')) || 0
   const dir = path.join(app.getPath('temp'), 'huobao-update')
@@ -165,7 +165,7 @@ async function doDownload(): Promise<UpdateState> {
   const actual = await sha256(dest)
   if (asset.sha256 && actual !== asset.sha256) {
     await fsp.rm(dest, { force: true })
-    throw new Error('更新包校验失败（sha256 不匹配），已取消安装')
+    throw new Error('Update package verification failed (sha256 mismatch). Installation canceled')
   }
 
   setState({ status: 'downloaded', downloadProgress: 100, downloadedFile: dest })
@@ -179,10 +179,10 @@ async function doDownload(): Promise<UpdateState> {
 function describeApplyError(err: unknown): string {
   const e = err as NodeJS.ErrnoException
   if (e?.code === 'EPERM' || e?.code === 'EACCES') {
-    return `系统权限不足（${e.code}）：请在 系统设置 → 隐私与安全性 → App 管理 中允许 HuobaoDrama 后重试；或下载最新 dmg 覆盖安装（数据不受影响）`
+    return `Insufficient system permissions (${e.code}). Allow HuobaoDrama in System Settings → Privacy & Security → App Management and try again, or download the latest dmg and install over the existing app (your data is not affected)`
   }
   if (e?.code === 'EROFS') {
-    return '应用正运行在只读位置（可能直接在 dmg 挂载卷里），请先把 HuobaoDrama 拖入「应用程序」再更新'
+    return 'The app is running from a read-only location (possibly directly from the mounted dmg). Drag HuobaoDrama into Applications, then update'
   }
   return e?.message || String(err)
 }
@@ -190,7 +190,7 @@ function describeApplyError(err: unknown): string {
 async function doApply(): Promise<void> {
   if (state.status !== 'downloaded' || !state.downloadedFile) {
     // 兜底：直接查询 temp 里的最新产物
-    throw new Error('请先下载更新')
+    throw new Error('Download the update first')
   }
   const downloaded = state.downloadedFile
 
@@ -202,7 +202,7 @@ async function doApply(): Promise<void> {
         execFile('unzip', ['-q', '-o', downloaded, '-d', tmpExtract], err => (err ? reject(err) : resolve()))
       })
       const newApp = path.join(tmpExtract, 'HuobaoDrama.app')
-      if (!fs.existsSync(newApp)) throw new Error('更新包内容异常（未找到 HuobaoDrama.app）')
+      if (!fs.existsSync(newApp)) throw new Error('Update package is malformed (HuobaoDrama.app not found)')
 
       const oldBundle = `${bundle}.old`
       fs.rmSync(oldBundle, { recursive: true, force: true })
@@ -233,7 +233,7 @@ async function doApply(): Promise<void> {
     return
   }
 
-  throw new Error(`不支持的平台: ${process.platform}`)
+  throw new Error(`Unsupported platform: ${process.platform}`)
 }
 
 // ---- 注册 ----

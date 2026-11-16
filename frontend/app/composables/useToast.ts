@@ -50,7 +50,8 @@ export function mapError(err: unknown, opts?: { fallback?: string }): string {
   if (TIMEOUT_RE.test(msg)) return t('errors.timeout')
 
   // 后端友好中文（短、含中文、无技术特征）直接透传
-  if (msg.length <= 40 && CJK_RE.test(msg) && !TECHY_RE.test(msg)) return msg
+  // Backend messages are English now, which runs longer than the Chinese originals
+  if (msg.length <= (CJK_RE.test(msg) ? 40 : 160) && !TECHY_RE.test(msg)) return msg
 
   if (/^\d{3}$/.test(msg)) return t('errors.requestFailed', { status: msg })
 

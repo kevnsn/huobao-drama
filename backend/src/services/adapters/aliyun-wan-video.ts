@@ -64,14 +64,14 @@ function validateMediaUrl(type: WanMediaType, url: string) {
   const isImageData = /^data:image\/(?:jpeg|jpg|png|bmp|webp);base64,/i.test(url)
   if (type === 'first_frame' || type === 'last_frame' || type === 'reference_image') {
     if (isWebUrl || isOssUrl || isImageData) return
-    throw new Error(`Wan 3.0 ${type} 需要 HTTP(S)/OSS 图片 URL 或官方支持的图片 Base64`)
+    throw new Error(`Wan 3.0 ${type} requires an HTTP(S)/OSS image URL or an officially supported image Base64`)
   }
   if (type === 'link') {
     if (isWebUrl) return
-    throw new Error('Wan 3.0 link 仅支持无需登录的 HTTP(S) 公开网页')
+    throw new Error('Wan 3.0 link only supports public HTTP(S) pages that do not require login')
   }
   if (isWebUrl || isOssUrl) return
-  throw new Error(`Wan 3.0 ${type} 仅支持 HTTP(S) 或 OSS URL`)
+  throw new Error(`Wan 3.0 ${type} only supports HTTP(S) or OSS URLs`)
 }
 
 function booleanValue(value: number | boolean | null | undefined, fallback: boolean): boolean {
@@ -93,7 +93,7 @@ export class AliyunWanVideoAdapter implements VideoProviderAdapter {
   buildGenerateRequest(config: AIConfig, record: VideoGenerationRecord): ProviderRequest {
     const model = cleanUrl(record.model || config.model || DEFAULT_MODEL)
     if (!SUPPORTED_MODELS.has(model)) {
-      throw new Error(`Wan 3.0 仅支持 wan3.0-video-prime 或 wan3.0-video，当前: ${model}`)
+      throw new Error(`Wan 3.0 only supports wan3.0-video-prime or wan3.0-video, got: ${model}`)
     }
 
     // 官方对超过 20000 字符的部分自动截断；同时将项目内部 @图片N 标记转为官方的 图N 引用。
@@ -120,7 +120,7 @@ export class AliyunWanVideoAdapter implements VideoProviderAdapter {
     for (const item of media) validateMediaUrl(item.type, item.url)
 
     if (!prompt && media.length === 0) {
-      throw new Error('Wan 3.0 的 input.prompt 和 input.media 至少需要提供一项')
+      throw new Error('Wan 3.0 requires at least one of input.prompt and input.media')
     }
 
     const input: { prompt?: string; media?: WanMedia[] } = {}
@@ -139,7 +139,7 @@ export class AliyunWanVideoAdapter implements VideoProviderAdapter {
     if (record.seed !== null && record.seed !== undefined) {
       const seed = Number(record.seed)
       if (!Number.isInteger(seed) || (seed !== -1 && (seed < 0 || seed > MAX_SEED))) {
-        throw new Error(`Wan 3.0 seed 必须为 -1 或 0~${MAX_SEED} 的整数`)
+        throw new Error(`Wan 3.0 seed must be -1 or an integer in 0~${MAX_SEED}`)
       }
       parameters.seed = seed
     }
@@ -159,7 +159,7 @@ export class AliyunWanVideoAdapter implements VideoProviderAdapter {
   parseGenerateResponse(result: any): VideoGenResponse {
     const taskId = result?.output?.task_id
     if (taskId) return { isAsync: true, taskId: String(taskId) }
-    throw new Error(errorMessage(result, 'Wan 3.0 响应中缺少 output.task_id'))
+    throw new Error(errorMessage(result, 'Wan 3.0 response is missing output.task_id'))
   }
 
   buildPollRequest(config: AIConfig, taskId: string): ProviderRequest {
@@ -180,7 +180,7 @@ export class AliyunWanVideoAdapter implements VideoProviderAdapter {
         return { status: 'processing' }
       case 'SUCCEEDED':
         if (!output.video_url) {
-          return { status: 'failed', error: errorMessage(result, 'Wan 3.0 任务成功但响应中缺少 output.video_url') }
+          return { status: 'failed', error: errorMessage(result, 'Wan 3.0 task succeeded but the response is missing output.video_url') }
         }
         {
           const duration = Number(result?.usage?.output_video_duration ?? result?.usage?.duration)
@@ -191,14 +191,14 @@ export class AliyunWanVideoAdapter implements VideoProviderAdapter {
           }
         }
       case 'FAILED':
-        return { status: 'failed', error: errorMessage(result, 'Wan 3.0 视频生成失败') }
+        return { status: 'failed', error: errorMessage(result, 'Wan 3.0 video generation failed') }
       case 'CANCELED':
-        return { status: 'failed', error: errorMessage(result, 'Wan 3.0 任务已取消') }
+        return { status: 'failed', error: errorMessage(result, 'Wan 3.0 task was canceled') }
       case 'UNKNOWN':
-        return { status: 'failed', error: errorMessage(result, 'Wan 3.0 任务不存在或已超过 24 小时查询有效期') }
+        return { status: 'failed', error: errorMessage(result, 'Wan 3.0 task not found or past the 24-hour query window') }
       default:
         if (result?.code || result?.message || output.code || output.message) {
-          return { status: 'failed', error: errorMessage(result, 'Wan 3.0 任务查询失败') }
+          return { status: 'failed', error: errorMessage(result, 'Wan 3.0 task query failed') }
         }
         return { status: 'processing' }
     }
@@ -219,27 +219,27 @@ export class AliyunWanVideoAdapter implements VideoProviderAdapter {
   }) {
     const { refImages, refVideos, refAudios, firstFrame, lastFrame, file, link } = input
     if (refImages.length > REF_LIMITS.images || refVideos.length > REF_LIMITS.videos || refAudios.length > REF_LIMITS.audios) {
-      throw new Error(`Wan 3.0 参考素材超限：图片≤${REF_LIMITS.images}、视频≤${REF_LIMITS.videos}、音频≤${REF_LIMITS.audios}`)
+      throw new Error(`Wan 3.0 reference limit exceeded: images ≤${REF_LIMITS.images}, videos ≤${REF_LIMITS.videos}, audios ≤${REF_LIMITS.audios}`)
     }
-    if (lastFrame && !firstFrame) throw new Error('Wan 3.0 尾帧必须与首帧同时传入')
-    if (file && link) throw new Error('Wan 3.0 file 与 link 不能同时传入')
+    if (lastFrame && !firstFrame) throw new Error('Wan 3.0 last frame must be provided together with the first frame')
+    if (file && link) throw new Error('Wan 3.0 file and link cannot be provided together')
 
     const hasFrameMode = Boolean(firstFrame || lastFrame)
     const hasReferenceMode = Boolean(refImages.length || refVideos.length || refAudios.length || file || link)
     if (hasFrameMode && hasReferenceMode) {
-      throw new Error('Wan 3.0 的 first_frame/last_frame 不能与 reference_image/reference_video/reference_audio/file/link 混用')
+      throw new Error('Wan 3.0 first_frame/last_frame cannot be combined with reference_image/reference_video/reference_audio/file/link')
     }
 
     const total = refImages.length + refVideos.length + refAudios.length + (firstFrame ? 1 : 0)
       + (lastFrame ? 1 : 0) + (file ? 1 : 0) + (link ? 1 : 0)
-    if (total > REF_LIMITS.total) throw new Error(`Wan 3.0 input.media 最多 ${REF_LIMITS.total} 项`)
+    if (total > REF_LIMITS.total) throw new Error(`Wan 3.0 input.media allows at most ${REF_LIMITS.total} items`)
   }
 
   private normalizeDuration(duration?: number | null): number {
     if (duration === null || duration === undefined) return 5
     const value = Number(duration)
     if (!Number.isInteger(value) || (value !== -1 && (value < 2 || value > 30))) {
-      throw new Error('Wan 3.0 duration 必须为 -1 或 2~30 的整数')
+      throw new Error('Wan 3.0 duration must be -1 or an integer in 2~30')
     }
     return value
   }
@@ -247,7 +247,7 @@ export class AliyunWanVideoAdapter implements VideoProviderAdapter {
   private normalizeResolution(resolution?: string | null): string {
     const value = cleanUrl(resolution).toUpperCase() || '1080P'
     if (!VALID_RESOLUTIONS.has(value)) {
-      throw new Error('Wan 3.0 resolution 仅支持 480P、720P 或 1080P')
+      throw new Error('Wan 3.0 resolution only supports 480P, 720P or 1080P')
     }
     return value
   }
@@ -255,7 +255,7 @@ export class AliyunWanVideoAdapter implements VideoProviderAdapter {
   private normalizeRatio(ratio?: string | null): string {
     const value = cleanUrl(ratio) || 'adaptive'
     if (!VALID_RATIOS.has(value)) {
-      throw new Error('Wan 3.0 ratio 仅支持 adaptive、16:9、4:3、1:1、3:4 或 9:16')
+      throw new Error('Wan 3.0 ratio only supports adaptive, 16:9, 4:3, 1:1, 3:4 or 9:16')
     }
     return value
   }

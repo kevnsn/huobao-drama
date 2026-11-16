@@ -5,6 +5,7 @@ import { db, schema } from '../db/index.js'
 import { eq } from 'drizzle-orm'
 import { logTaskProgress, logTaskWarn } from '../utils/task-logger.js'
 import { joinProviderUrl } from './adapters/url.js'
+import { CODEX_BASE_URL } from './codex-auth.js'
 
 export type ServiceType = 'text' | 'image' | 'video'
 
@@ -30,9 +31,9 @@ export function parseConfigTemperature(settingsRaw: string | null | undefined): 
 }
 
 export const officialProviders: Record<ServiceType, readonly string[]> = {
-  text: ['openai', 'gemini', 'volcengine'],
-  image: ['openai', 'gemini', 'volcengine'],
-  video: ['volcengine', 'minimax', 'aliyun'],
+  text: ['openai', 'gemini', 'volcengine', 'codex'],
+  image: ['openai', 'gemini', 'volcengine', 'codex'],
+  video: ['volcengine', 'minimax', 'aliyun', 'openrouter'],
 }
 
 export function isOfficialProvider(serviceType?: string | null, provider?: string | null): boolean {
@@ -53,6 +54,10 @@ export function getTextProviderBaseUrl(config: AIConfig) {
 
   if (provider === 'volcengine') {
     return joinProviderUrl(config.baseUrl, '/api/v3', '')
+  }
+
+  if (provider === 'codex') {
+    return config.baseUrl || CODEX_BASE_URL
   }
 
   return config.baseUrl
@@ -99,7 +104,7 @@ export async function getActiveConfig(serviceType: ServiceType): Promise<AIConfi
 
 export async function getTextConfig(): Promise<AIConfig> {
   const config = await getActiveConfig('text')
-  if (!config) throw new Error('未配置文本模型，请先到「设置」页添加并启用 AI 服务')
+  if (!config) throw new Error('No text model configured. Add and enable an AI service in Settings first')
   return config
 }
 

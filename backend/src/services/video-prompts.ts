@@ -59,7 +59,7 @@ export async function startVideoPromptBatch(
   logTaskStart('VideoPrompt', 'batch', { episodeId, dramaId, total: pending.length, model: opts.model || undefined })
   ;(async () => {
     const agent = mastra.getAgent('prompt_generator')
-    if (!agent) throw new Error('视频提示词 Agent 不可用')
+    if (!agent) throw new Error('Video prompt agent is unavailable')
     const requestContext = buildAgentRequestContext({
       episodeId,
       dramaId,
@@ -97,7 +97,7 @@ export async function startVideoPromptBatch(
     .catch((err: any) => {
       task.status = 'error'
       task.finished_at = new Date().toISOString()
-      task.error = err?.message || '批量生成失败'
+      task.error = err?.message || 'Batch generation failed'
       logTaskError('VideoPrompt', 'batch', { episodeId, error: err?.message })
     })
   return { started: true, total: pending.length }

@@ -223,7 +223,7 @@ const dramaToDelete = ref(null)
 const deletingDrama = ref(false)
 const form = ref({ title: '', style: '', aspect_ratio: '16:9' })
 const stylePresets = ref([])
-const styleSelectOptions = computed(() => stylePresets.value.map(p => ({ label: p.name, value: p.value })))
+const styleSelectOptions = computed(() => stylePresets.value.map(p => ({ label: p.name, value: p.value, description: p.description || '' })))
 const selectedStyleDesc = computed(() => stylePresets.value.find(p => p.value === form.value.style)?.description || '')
 // 常量数组 label 渲染时求值（语言切换即时生效），value 为逻辑值
 const aspectRatioOptions = computed(() => ([

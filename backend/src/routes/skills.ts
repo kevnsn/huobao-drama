@@ -42,7 +42,7 @@ app.get('/', async (c) => {
 app.get('/*', async (c) => {
   const id = c.req.path.slice('/api/v1/skills/'.length)
   const lang = normalizeLang(c.req.query('lang'))
-  if (!await fsm().exists(skillFile(id))) return badRequest(c, '技能不存在')
+  if (!await fsm().exists(skillFile(id))) return badRequest(c, 'Skill not found')
   const variantExists = lang !== 'zh' && await fsm().exists(skillFile(id, lang))
   const content = await fsm().readFile(skillFile(id, variantExists ? lang : undefined), { encoding: 'utf-8' })
   return success(c, { id, lang, content, is_default: lang !== 'zh' && !variantExists })
@@ -53,7 +53,7 @@ app.put('/*', async (c) => {
   const id = c.req.path.slice('/api/v1/skills/'.length)
   const body = await c.req.json()
   const lang = normalizeLang(c.req.query('lang') ?? body.lang)
-  if (lang !== 'zh' && !await fsm().exists(skillFile(id))) return badRequest(c, '技能不存在')
+  if (lang !== 'zh' && !await fsm().exists(skillFile(id))) return badRequest(c, 'Skill not found')
   await fsm().writeFile(skillFile(id, lang), body.content, { recursive: true })
   // 目录 mtime 不会因文件内容编辑而更新（APFS），显式刷新技能缓存；语言变体直读无需刷新
   if (lang === 'zh') await refreshSkillWorkspaces()
@@ -64,13 +64,13 @@ app.put('/*', async (c) => {
 app.post('/', async (c) => {
   const body = await c.req.json()
   const { id, description } = body
-  if (!id) return badRequest(c, 'Skill id 必填')
+  if (!id) return badRequest(c, 'Skill id is required')
   // Mastra 技能规范：frontmatter name 必须与目录名一致，且只允许小写字母/数字/连字符
   const segments = String(id).split('/')
   if (!segments.every((seg: string) => SKILL_ID_SEGMENT.test(seg))) {
-    return badRequest(c, 'Skill id 每段只能包含小写字母、数字和连字符')
+    return badRequest(c, 'Each segment of the skill id may only contain lowercase letters, digits and hyphens')
   }
-  if (await fsm().exists(skillFile(id))) return badRequest(c, '技能已存在')
+  if (await fsm().exists(skillFile(id))) return badRequest(c, 'Skill already exists')
 
   const name = segments[segments.length - 1]
   const content = `---
@@ -90,7 +90,7 @@ Write your skill content here.
 // DELETE /skills/:id — Delete skill directory
 app.delete('/*', async (c) => {
   const id = c.req.path.slice('/api/v1/skills/'.length)
-  if (!await fsm().exists(`skills/${id}`)) return badRequest(c, '技能不存在')
+  if (!await fsm().exists(`skills/${id}`)) return badRequest(c, 'Skill not found')
   await fsm().rmdir(`skills/${id}`, { recursive: true })
   await refreshSkillWorkspaces()
   return success(c)

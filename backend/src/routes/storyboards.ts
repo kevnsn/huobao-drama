@@ -62,17 +62,17 @@ async function validateStoryboardBindings(episodeId: number, sceneId: number | n
   const episodePropIds = new Set(propLinks.map(link => link.propId))
 
   if (sceneId != null && !episodeSceneIds.has(sceneId)) {
-    throw new Error('scene_id 必须来自当前集已关联场景')
+    throw new Error('scene_id must belong to a scene linked to the current episode')
   }
 
   const invalidCharacterIds = (characterIds || []).filter(id => !episodeCharacterIds.has(id))
   if (invalidCharacterIds.length) {
-    throw new Error('character_ids 必须来自当前集已关联角色')
+    throw new Error('character_ids must belong to characters linked to the current episode')
   }
 
   const invalidPropIds = (propIds || []).filter(id => !episodePropIds.has(id))
   if (invalidPropIds.length) {
-    throw new Error('prop_ids 必须来自当前集已关联道具')
+    throw new Error('prop_ids must belong to props linked to the current episode')
   }
 }
 
@@ -119,7 +119,7 @@ app.put('/:id', async (c) => {
   const id = Number(c.req.param('id'))
   const body = await c.req.json()
   const [storyboard] = await db.select().from(schema.storyboards).where(eq(schema.storyboards.id, id))
-  if (!storyboard) return badRequest(c, '镜头不存在')
+  if (!storyboard) return badRequest(c, 'Shot not found')
   logTaskStart('StoryboardAPI', 'update', {
     storyboardId: id,
     episodeId: storyboard.episodeId,

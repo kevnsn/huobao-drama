@@ -17,8 +17,8 @@ test('POST /episodes auto-locks configs when not provided', () => {
   // ai.ts 提供 getActiveConfigId
   assert.match(ai, /export async function getActiveConfigId/)
   // 找不到启用配置时给可操作的错误提示
-  assert.match(route, /未找到启用的图片生成配置/)
-  assert.match(route, /未找到启用的视频生成配置/)
+  assert.match(route, /No enabled image generation config found/)
+  assert.match(route, /No enabled video generation config found/)
 })
 
 test('POST /episodes still honors explicit config ids when caller passes them', () => {

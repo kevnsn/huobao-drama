@@ -44,7 +44,7 @@ function copyResources(resourcesPath: string, target: string): void {
   for (const item of RESOURCE_ITEMS) {
     const source = path.join(resourcesPath, item)
     const destination = path.join(target, item)
-    if (!fs.existsSync(source)) throw new Error(`安装资源缺失：${item}`)
+    if (!fs.existsSync(source)) throw new Error(`Missing install resource: ${item}`)
     if (fs.statSync(source).isDirectory()) {
       fs.cpSync(source, destination, { recursive: true })
     } else {
@@ -98,7 +98,7 @@ export function stageRuntimeResources(resourcesPath: string, options: RuntimeOpt
     }
   }
 
-  throw new Error(`中文安装路径兼容资源准备失败，请检查磁盘空间和目录权限：${(lastError as Error)?.message || '无可用 ASCII 目录'}`)
+  throw new Error(`Failed to prepare resources for a non-ASCII install path. Check disk space and folder permissions: ${(lastError as Error)?.message || 'no usable ASCII directory'}`)
 }
 
 function windowsShortPath(directory: string): Promise<string | null> {

@@ -34,7 +34,13 @@
               role="menuitem"
               @click="pick(opt)"
               @mousemove="highlightedIdx = getGlobalIdx(gi, oi)"
-            >{{ opt.label }}</button>
+            >
+              <span v-if="opt.description" class="base-select-rich">
+                <span>{{ opt.label }}</span>
+                <span class="base-select-desc">{{ opt.description }}</span>
+              </span>
+              <template v-else>{{ opt.label }}</template>
+            </button>
           </template>
         </template>
         <div v-else class="base-select-empty">{{ t('components.baseSelect.noMatch') }}</div>
@@ -71,7 +77,7 @@ const normalizedGroups = computed(() => {
   if (props.options[0]?.options) {
     return props.options.map(g => ({
       label: g.label || '',
-      options: g.options.map(o => ({ label: o.label ?? o, value: o.value ?? o })),
+      options: g.options.map(o => ({ label: o.label ?? o, value: o.value ?? o, description: o.description })),
     }))
   }
   // Flat list with optional group property
@@ -79,7 +85,7 @@ const normalizedGroups = computed(() => {
   for (const o of props.options) {
     const label = o.group || ''
     if (!map.has(label)) map.set(label, [])
-    map.get(label).push({ label: o.label ?? o, value: o.value ?? o })
+    map.get(label).push({ label: o.label ?? o, value: o.value ?? o, description: o.description })
   }
   return Array.from(map.entries()).map(([label, options]) => ({ label, options }))
 })
@@ -91,7 +97,7 @@ const filteredGroups = computed(() => {
   return normalizedGroups.value
     .map(g => ({
       label: g.label,
-      options: g.options.filter(o => o.label.toLowerCase().includes(q)),
+      options: g.options.filter(o => `${o.label} ${o.description || ''}`.toLowerCase().includes(q)),
     }))
     .filter(g => g.options.length > 0)
 })
@@ -253,4 +259,6 @@ function onSearchKeydown(e) {
   color: var(--text-3);
   text-align: center;
 }
+.base-select-rich { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.base-select-desc { font-size: 11px; font-weight: 400; line-height: 1.35; color: var(--text-3); white-space: normal; }
 </style>

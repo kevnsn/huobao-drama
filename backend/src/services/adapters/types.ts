@@ -57,6 +57,9 @@ export interface VideoProviderAdapter {
   parsePollResponse(result: any): VideoPollResponse
 
   extractVideoUrl(result: any): string | null
+
+  /** Extra headers needed to download the finished video (e.g. provider-hosted URLs that require the API key) */
+  downloadHeaders?(config: AIConfig, videoUrl: string): Record<string, string> | undefined
 }
 
 // ============ 通用类型 ============
@@ -71,6 +74,8 @@ export interface ProviderRequest {
    * 此时 headers 不要设置 Content-Type，边界由 fetch 自动生成。
    */
   body: any
+  /** Custom transport (e.g. Codex subscription auth); defaults to global fetch */
+  fetch?: typeof fetch
 }
 
 export interface AIConfig {

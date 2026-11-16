@@ -143,6 +143,7 @@ export const aiConfigAPI = {
   update: (id: number, d: any) => api.put(`/ai-configs/${id}`, d),
   del: (id: number) => api.del(`/ai-configs/${id}`),
   test: (d: any) => api.post('/ai-configs/test', d),
+  openRouterVideoModels: () => api.get('/ai-configs/openrouter/video-models'),
 }
 
 // lang 缺省/为 zh 时读写基础版（不带 query，保持原请求形态）

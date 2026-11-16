@@ -9,6 +9,7 @@ import type { RequestContext } from '@mastra/core/request-context'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
 import { getTextConfig, getTextProviderBaseUrl, getConfigById } from '../services/ai.js'
+import { codexFetch } from '../services/codex-auth.js'
 import { logTaskProgress } from '../utils/task-logger.js'
 import { scriptTools } from './tools/script-tools.js'
 import { extractTools } from './tools/extract-tools.js'
@@ -308,6 +309,24 @@ async function getModel(fileModel: string | undefined, modelOverride?: string, t
       model: modelName,
       ...(temperature !== null ? { temperature } : {}),
     })
+  }
+
+  if (providerName === 'codex') {
+    // ChatGPT/Codex subscription: Responses API, signed-in session instead of an API key,
+    // and stateless — the SDK must send full items back rather than server-side references.
+    const model = createOpenAI({ baseURL: resolvedBaseURL, apiKey: 'codex-subscription', fetch: codexFetch })
+      .responses(modelName) as any
+    for (const method of ['doGenerate', 'doStream']) {
+      const original = model[method].bind(model)
+      model[method] = (options: any) => original({
+        ...options,
+        providerOptions: {
+          ...options.providerOptions,
+          openai: { ...options.providerOptions?.openai, store: false },
+        },
+      })
+    }
+    return model
   }
 
   // 叠加请求补丁：thinking-off（非官方端点）+ 配置温度 + 输出上限（非官方 OpenAI）

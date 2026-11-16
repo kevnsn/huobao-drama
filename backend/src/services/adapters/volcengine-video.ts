@@ -40,7 +40,7 @@ export class VolcEngineVideoAdapter implements VideoProviderAdapter {
   buildGenerateRequest(config: AIConfig, record: VideoGenerationRecord): ProviderRequest {
     const model = record.model || config.model || DEFAULT_MODEL
     if (!model.startsWith(SEEDANCE2_MODEL_PREFIX)) {
-      throw new Error(`仅支持 Seedance 2.0 系列模型（${SEEDANCE2_MODEL_PREFIX}-*），当前: ${model}`)
+      throw new Error(`Only Seedance 2.0 series models (${SEEDANCE2_MODEL_PREFIX}-*) are supported, got: ${model}`)
     }
 
     const prompt = (record.prompt || '').trim()
@@ -49,13 +49,13 @@ export class VolcEngineVideoAdapter implements VideoProviderAdapter {
     const refAudios = parseUrlArray(record.referenceAudioUrls)
 
     if (refImages.length > REF_LIMITS.images || refVideos.length > REF_LIMITS.videos || refAudios.length > REF_LIMITS.audios) {
-      throw new Error(`参考素材超限：图片≤${REF_LIMITS.images}、视频≤${REF_LIMITS.videos}、音频≤${REF_LIMITS.audios}`)
+      throw new Error(`Reference limit exceeded: images ≤${REF_LIMITS.images}, videos ≤${REF_LIMITS.videos}, audios ≤${REF_LIMITS.audios}`)
     }
     if (refAudios.length > 0 && refImages.length + refVideos.length === 0) {
-      throw new Error('参考音频需要至少 1 个参考图片或视频')
+      throw new Error('Reference audio requires at least 1 reference image or video')
     }
     if (!prompt && !refImages.length && !refVideos.length && !refAudios.length) {
-      throw new Error('多模态参考模式需要至少一个参考素材或 prompt')
+      throw new Error('Multimodal reference mode requires at least one reference asset or a prompt')
     }
 
     const content: any[] = []
