@@ -230,5 +230,5 @@ watch(locale, checkAiConfigs)
 .config-banner-link:hover { background: var(--warn-link-hover-bg); color: var(--warn-text); }
 
 /* Content */
-.content { flex: 1; overflow: clip; display: flex; flex-direction: column; }
+.content { flex: 1; min-height: 0; overflow: clip; display: flex; flex-direction: column; }
 </style>
