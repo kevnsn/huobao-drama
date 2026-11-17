@@ -6,6 +6,7 @@ import { toSnakeCaseArray, toSnakeCase } from '../utils/transform.js'
 import { getActiveConfigId } from '../services/ai.js'
 import { EXTRACT_TARGETS, getExtractionStatus, startExtraction, type ExtractTarget } from '../services/extraction.js'
 import { getVideoPromptBatchStatus, startVideoPromptBatch } from '../services/video-prompts.js'
+import { generateSceneMasters } from '../services/continuity.js'
 
 const app = new Hono()
 
@@ -210,6 +211,18 @@ app.get('/:episode_id/storyboards', async (c) => {
       .filter(p => (propIdsByStoryboard.get(row.id) || []).includes(p.id))
       .map(p => toSnakeCase(p)),
   })))
+})
+
+// POST /episodes/:id/scene-masters — one wide master frame per staging setup, used as a continuity reference by every shot in it
+app.post('/:id/scene-masters', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  try {
+    return success(c, await generateSceneMasters(Number(c.req.param('id')), {
+      force: body.force === true, configId: body.config_id ?? undefined, model: body.model || undefined,
+    }))
+  } catch (err: any) {
+    return badRequest(c, err.message)
+  }
 })
 
 // GET /episodes/:id/pipeline-status — 流水线进度

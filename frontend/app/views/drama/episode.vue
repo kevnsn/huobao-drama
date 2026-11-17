@@ -804,6 +804,21 @@
                       </button>
                     </div>
                     <div v-else class="video-bound-refs-empty">{{ t('episode.inspector.noBoundRefs') }}</div>
+                    <!-- Continuity references the backend adds on its own when this shot is generated -->
+                    <div v-if="continuityRefs.master || continuityRefs.previous" class="video-bound-refs video-continuity-refs">
+                      <button
+                        v-for="item in [{ key: 'master', src: continuityRefs.master, label: t('episode.inspector.continuityMaster') }, { key: 'previous', src: continuityRefs.previous, label: t('episode.inspector.continuityPrev') }].filter(i => i.src)"
+                        :key="item.key"
+                        type="button"
+                        class="video-bound-ref"
+                        :title="item.label"
+                        @click="openImageViewer(assetImageSrc({ imageUrl: item.src }), item.label)"
+                      >
+                        <img :src="assetImageSrc({ imageUrl: item.src })" :alt="item.label" loading="lazy" />
+                        <small>{{ item.label }}</small>
+                      </button>
+                    </div>
+                    <div class="video-param-hint">{{ continuityRefs.master || continuityRefs.previous ? t('episode.inspector.continuityHint') : t('episode.inspector.continuityNone') }}</div>
                   </section>
                 </div>
 
@@ -2271,7 +2286,7 @@ function confirmBatchVideos() {
   batchVideoConfirm.value = { open: false, targets: [] }
   if (!targets.length) return
   const ids = targets.map(s => s.id)
-  targets.forEach(sb => genVid(sb, { silent: true }))
+  void runBatchVideos(targets)
   toast.success(t('episode.vid.batchStarted', { n: ids.length }))
   watchAsyncResult(() => ids.every(id => {
     const target = sbs.value.find(s => s.id === id)
@@ -2280,6 +2295,38 @@ function confirmBatchVideos() {
     return done
   }), 80, 4000)
   if (videoSelectMode.value) toggleVideoSelectMode()
+}
+
+// Continuity: one master frame per scene first, then each scene's shots in order, so every shot
+// can reference the scene's master frame and the last frame of the shot before it. Scenes run side by side.
+async function runBatchVideos(targets) {
+  try {
+    const { started = [] } = await episodeAPI.sceneMasters(epId.value) || {}
+    for (const { task_id } of started) {
+      for (let i = 0; i < 60; i++) {
+        const task = await taskAPI.get(task_id).catch(() => null)
+        if (!task || task.status === 'completed' || task.status === 'failed') break
+        await sleep(4000)
+      }
+    }
+  } catch {} // master frames are a help, not a requirement
+  const byScene = new Map()
+  for (const sb of targets) {
+    const key = sb.scene_id || sb.sceneId || `solo-${sb.id}`
+    byScene.set(key, [...(byScene.get(key) || []), sb])
+  }
+  await Promise.all([...byScene.values()].map(async (shots) => {
+    shots.sort((a, b) => (a.storyboard_number || 0) - (b.storyboard_number || 0))
+    for (const sb of shots) {
+      const taskId = await genVid(sb, { silent: true })
+      // Wait for this shot's task before starting the next one in the scene (up to 10 minutes)
+      for (let i = 0; taskId && i < 150; i++) {
+        await sleep(4000)
+        const task = await taskAPI.get(taskId).catch(() => null)
+        if (!task || task.status === 'completed' || task.status === 'failed') break
+      }
+    }
+  }))
 }
 
 // 配置变化后校验持久化的模型是否仍存在（配置被删/模型被移除时回退默认，避免把失效模型传给后端）
@@ -2636,6 +2683,17 @@ const currentSubStageLabel = computed(() => currentStageLabel.value)
 
 const totalDuration = computed(() => sbs.value.reduce((s, sb) => s + (sb.duration || 10), 0))
 const selectedSb = ref(null)
+// What video generation will add for continuity: the scene's master frame and the previous shot's last frame
+const continuityRefs = ref({})
+async function loadContinuityRefs() {
+  const id = selectedSb.value?.id
+  if (!id) { continuityRefs.value = {}; return }
+  try {
+    const refs = await storyboardAPI.continuity(id)
+    if (selectedSb.value?.id === id) continuityRefs.value = refs || {}
+  } catch { continuityRefs.value = {} }
+}
+watch(selectedSb, loadContinuityRefs)
 const selectedVideoTaskNumber = computed(() => {
   const index = videoTaskRows.value.findIndex(task => String(task.id) === String(selectedSb.value?.id))
   return index >= 0 ? index + 1 : 0
@@ -3393,7 +3451,8 @@ async function genVid(sb, opts = {}) {
   if (!opts.forceNew && canRecoverVideo(sb.id)) return recoverVideo(sb)
   const latest = latestVideoTask(sb.id)
   const forceNew = opts.forceNew || latest?.status === 'failed'
-  if (forceNew && !window.confirm(t('episode.recovery.confirmNew'))) return
+  // A batch was already confirmed in its own dialog
+  if (forceNew && !opts.silent && !window.confirm(t('episode.recovery.confirmNew'))) return
   const referenceImages = getShotReferenceImages(sb)
   // 参考素材完全来自分镜绑定的角色/场景/道具图片
   const params = {
@@ -3418,6 +3477,7 @@ async function genVid(sb, opts = {}) {
     if (!opts.silent) toast.success(t('episode.vid.generating'))
     await refresh()
     pollVideoGeneration(generation?.id, sb.id)
+    return generation?.id
   } catch (e) {
     pendingVideoIds.value = pendingVideoIds.value.filter(item => item !== sb.id)
     failedVideoMessages.value = {
@@ -5337,6 +5397,8 @@ button.video-task-metric.on { box-shadow: 0 0 0 2px var(--accent); }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.video-continuity-refs { margin-top: 8px; }
+.video-continuity-refs .video-bound-ref { border-style: dashed; }
 .video-bound-ref-empty { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 11px; }
 .video-bound-refs-empty { padding: 10px; border: 1px dashed var(--surface-outline); border-radius: var(--radius); color: var(--text-3); font-size: 11px; line-height: 1.5; }
 .video-param-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; white-space: nowrap; }

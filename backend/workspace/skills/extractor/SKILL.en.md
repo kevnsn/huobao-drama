@@ -14,6 +14,8 @@ Extracted character fields (corresponding one-to-one with the `save_dedup_charac
 - **styling**: styling — hairstyle, clothing, makeup, accessories, etc.
 - **description**: backstory and character relationships (optional supplement)
 
+**Character sheet first**: when the script opens with a `## Characters` section, it is the source of truth for looks. Copy each character's `Appearance` into **appearance** and `Styling` into **styling**, keeping every detail; you may add detail the scenes show, but never contradict the sheet. When a sheet line has a `Body:` part, append it to the end of **appearance** as `Body: ...`, word for word. Only characters missing from the sheet are described from the scenes alone.
+
 ## Scene Extraction Rules
 
 Extracted scene fields (corresponding one-to-one with the `save_dedup_scenes` tool parameters):

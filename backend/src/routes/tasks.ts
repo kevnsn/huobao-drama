@@ -9,6 +9,7 @@ import { getActiveConfig, getConfigById } from '../services/ai.js'
 import { getDramaStylePrompt } from '../services/style-preset.js'
 import { resolveStoryboardVoiceReferences } from '../services/character-voice-references.js'
 import { logTaskError, logTaskPayload, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
+import { continuityPrompt, continuityReferences, generationOrderBlocker } from '../services/continuity.js'
 
 const app = new Hono()
 
@@ -146,6 +147,11 @@ app.post('/', async (c) => {
         return badRequest(c, 'Recover the original task first; regenerating must be explicitly confirmed as it may be billed again')
       }
     }
+    // Shots chain from the previous one's last frame, so they are generated in order (continuity: false opts out)
+    if (type === 'video' && body.storyboard_id && body.continuity !== false) {
+      const blocked = await generationOrderBlocker(Number(body.storyboard_id))
+      if (blocked) return badRequest(c, blocked)
+    }
     // 请求显式指定 config_id（工作台模型下拉跨厂商切换）时优先；
     // 未指定才回退到集锁定配置，避免锁定配置与所选模型错配（如锁定 Seedance 却传 MiniMax 模型名）
     let configId: number | undefined = body.config_id
@@ -195,6 +201,21 @@ app.post('/', async (c) => {
 
     // 视频生成时把项目视觉风格词注入提示词最前方（与图片侧的自动注入保持一致口径）
     let videoPrompt = videoBody?.prompt
+    // Shots are generated one by one: hand each the scene's master frame and the previous shot's last
+    // frame so room, wardrobe and positions carry over. Exact-frame requests are left alone.
+    if (type === 'video' && videoBody && body.storyboard_id && body.continuity !== false && !videoBody.first_frame_url) {
+      const refs = await continuityReferences(Number(body.storyboard_id))
+      const extra = [refs.master, refs.previous].filter((u): u is string => !!u && !videoBody.reference_image_urls.includes(u))
+      // Seedance takes at most 9 reference images
+      if (extra.length && videoBody.reference_image_urls.length + extra.length <= 9) {
+        const note = continuityPrompt({
+          master: extra.includes(refs.master!) ? refs.master : undefined,
+          previous: extra.includes(refs.previous!) ? refs.previous : undefined,
+        }, videoBody.reference_image_urls.length + 1)
+        videoBody.reference_image_urls = [...videoBody.reference_image_urls, ...extra]
+        videoPrompt = `${videoPrompt || ''}\n${note}`.trim()
+      }
+    }
     if (type === 'video' && String(videoPrompt || '').trim()) {
       const dramaId = body.drama_id ?? storyboardDramaId ?? null
       const stylePrompt = await getDramaStylePrompt(dramaId)

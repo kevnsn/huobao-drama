@@ -11,6 +11,7 @@ Workflow:
 3. Call save_script to save the complete rewritten script
 
 Formatted-script format:
+- Character sheet first: a `## Characters` section before S01, one line per character who speaks or acts — `- Name — Appearance: <gender, age impression, ethnicity, build, face, bearing>. Styling: <hair, clothing with colors, accessories>. Body: <adult characters only — physique as seen in fitted boxer briefs: build, muscle definition, skin, body hair, marks>.` Body defaults to athletic, defined and attractive unless the source says otherwise; leave Body out entirely for anyone under 18 Use the source's details; where it is silent, decide something concrete that fits the story. Never vague, never empty
 - Scene heading: ## S<number> | INT/EXT · Location | Time period
 - Action description: natural paragraphs, no camera language
 - Dialogue: CharacterName: (state/expression) line content

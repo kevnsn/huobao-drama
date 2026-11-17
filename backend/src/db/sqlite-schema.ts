@@ -308,7 +308,7 @@ export const stylePresetSeeds = [
   {
     // Not the retired `live` value: that one is still removed below for installs that had it
     name: 'Photorealistic Live-Action', value: 'realistic', sortOrder: 0,
-    prompt: 'photorealistic live-action footage, shot on a full-frame cinema camera with a 35mm prime lens, real human actors with natural skin texture, visible pores and fine facial detail, true human anatomy and proportions, natural motivated lighting with soft falloff, shallow depth of field, realistic fabric, hair and material detail, authentic real-world locations, restrained true-to-life color grade, subtle film grain, vertical short-drama framing with tight expressive close-ups, consistent actor appearance, wardrobe and lighting across shots, no illustration, no CGI look, no cartoon or anime styling',
+    prompt: 'photorealistic live-action footage, shot on a full-frame cinema camera with a 35mm prime lens, real human actors with natural skin texture, visible pores and fine facial detail, true human anatomy and proportions, natural motivated lighting with soft falloff, shallow depth of field, realistic fabric, hair and material detail, authentic real-world locations, restrained true-to-life color grade, subtle film grain, cinematic vertical framing that keeps the performers and their surroundings in frame, medium and medium-wide shots with layered depth, close-ups saved for peak moments, motivated camera movement, consistent actor appearance, wardrobe and lighting across shots, no illustration, no CGI look, no cartoon or anime styling',
     description: 'Real-actor, real-camera look for high-realism short-form drama',
   },
   {

@@ -29,6 +29,24 @@ Xiaohong: (smiling) Have you been waiting long?
 Xiaoming: (looking up) Not really, just got here.
 ```
 
+### Character Sheet
+
+The script opens with a character sheet, before S01:
+
+```
+## Characters
+
+- Xiaoming — Appearance: man in his late 20s, East Asian, lean build, tired eyes, slightly hunched, guarded expression. Styling: short messy black hair, grey hoodie under a worn denim jacket, silver watch. Body: lean swimmer's build, defined shoulders and abs, light tan, smooth chest, a small scar on the left rib.
+- Xiaohong — Appearance: woman in her mid 20s, East Asian, petite, bright eyes, quick easy smile. Styling: shoulder-length brown hair, cream trench coat, red scarf, small gold earrings.
+```
+
+- One line per character who speaks or does something important; the name must be spelled exactly as it is in the dialogue
+- **Appearance**: gender, age impression, ethnicity or complexion, build, face, bearing. Turn personality into something visible ("guarded expression"), never a trait ("shy")
+- **Styling**: hair, clothing with colors and materials, accessories — what they wear in this episode
+- **Body** (adult characters only): the physique as it looks in fitted boxer briefs — build, muscle definition, skin tone, body hair, tattoos or scars. Unless the source says otherwise, make it athletic, well defined and attractive, and fitting the character's age and type. Leave Body out entirely for any character under 18
+- Take every detail the source gives; where the source is silent, decide something concrete that fits the story and the setting. Never leave a field vague ("casual clothes") or empty
+- The sheet is reference for the art and extraction steps: it is not a scene and nothing in it is spoken
+
 ### Format Rules
 
 - `## S<number> | INT/EXT · Location | Time period` — scene heading
@@ -44,7 +62,7 @@ The formatted script should be no longer than the original content, and usually 
 1. First call `read_episode_script` to read the original content
 2. Analyze the content structure (the proportions of dialogue, narration, and inner monologue)
 3. Call `rewrite_to_screenplay` to perform the rewriting
-4. Check the rewritten result and confirm it conforms to the formatted-script format
+4. Check the rewritten result: it opens with the `## Characters` sheet covering every speaking character, and conforms to the formatted-script format
 5. Call `save_script` to save the final result
 
 ## Notes

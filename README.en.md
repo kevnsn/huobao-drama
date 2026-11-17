@@ -320,6 +320,8 @@ cloudflared tunnel --url http://localhost:5679   # or ngrok http 5679
 
 In ChatGPT, turn on developer mode in the connector settings, then create a connector with the URL `https://<your-tunnel>/mcp?key=<MCP_TOKEN>` and no authentication. Images generated or uploaded in the chat can then be passed to `set_image`.
 
+**Recreate a clip in another style** — ask the assistant to "recreate this clip as anime" and give it the video. It uses `upload_clip` and `analyze_clip` to find the cuts and look at each shot's frames, writes the shots with `create_storyboards`, restyles each first frame with `generate_frame`, then calls `generate_video` per shot with the restyled frame as a reference image. To also match motion, the shot's cut-out segment can be passed as a reference video on services that accept one (Seedance, Wan); that needs `PUBLIC_BASE_URL` set so the service can download it.
+
 Without `MCP_TOKEN` the endpoint is open to anyone who can reach the port, which is fine on localhost only. Set `HUOBAO_API` if the backend is not at `http://localhost:5679/api/v1`.
 
 ## 📦 Deployment

@@ -9,8 +9,48 @@ import { eq } from 'drizzle-orm'
 import { now } from '../utils/response.js'
 import { logTaskError, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
 import { extractVideoPoster } from '../utils/video-poster.js'
-import { ffmpeg, checkFfmpegSuite } from '../utils/ffmpeg.js'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
+import { ffmpeg, ffmpegPath, checkFfmpegSuite } from '../utils/ffmpeg.js'
 import { DATA_ROOT, STORAGE_ROOT } from '../utils/paths.js'
+
+const exec = promisify(execFile)
+
+/**
+ * Where to cut a clip that ends in dead air, or null to keep it whole.
+ * Video models often finish the dialogue early and pad the rest with silence. Deliberately conservative:
+ * only silence that runs to the very end counts, a clip with no sound at all is a designed silent beat and
+ * is left alone, a final time slice written without dialogue keeps its planned length, and at most 40% of
+ * a clip is ever removed. Music or room tone is not silence, so scored clips are never touched.
+ */
+export async function trailingSilenceCut(file: string, videoPrompt?: string | null): Promise<number | null> {
+  if (!ffmpegPath) return null
+  let log = ''
+  try {
+    log = (await exec(ffmpegPath, ['-hide_banner', '-i', file, '-vn', '-af', 'silencedetect=noise=-35dB:d=0.5', '-f', 'null', '-'], { maxBuffer: 16 * 1024 * 1024 })).stderr
+  } catch {
+    return null
+  }
+  const dm = log.match(/Duration: (\d+):(\d+):([\d.]+)/)
+  if (!dm || !/Audio:/.test(log)) return null
+  const duration = Number(dm[1]) * 3600 + Number(dm[2]) * 60 + Number(dm[3])
+  const starts = [...log.matchAll(/silence_start: ([\d.]+)/g)].map(m => Number(m[1]))
+  const ends = [...log.matchAll(/silence_end: ([\d.]+)/g)].map(m => Number(m[1]))
+  if (!starts.length) return null
+  const start = starts[starts.length - 1]
+  const end = ends.length === starts.length ? ends[ends.length - 1] : duration
+  if (end < duration - 0.3) return null // sound comes back before the end
+  if (start < 0.5) return null // silent throughout: intentional
+
+  // A last slice with no spoken line is a planned reaction beat: keep that much of it
+  const slices = [...String(videoPrompt || '').matchAll(/^\s*(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)\s*(?:s|秒)[^\n]*/gm)]
+  const last = slices[slices.length - 1]
+  const plannedBeat = last && !/["“”「]/.test(last[0]) ? Number(last[2]) - Number(last[1]) : 0
+  const keep = Math.min(Math.max(plannedBeat, 0.6), 2.5)
+
+  const cut = Math.max(start + keep, duration * 0.6)
+  return duration - cut >= 0.5 ? Number(cut.toFixed(2)) : null
+}
 
 function toAbsPath(relativePath: string): string {
   if (path.isAbsolute(relativePath)) return relativePath
@@ -23,7 +63,7 @@ function toAbsPath(relativePath: string): string {
  * 优先使用视频生成产物，兼容历史的 composedVideoUrl 数据。
  * 传入 storyboardIds 时只拼接所选镜头（仍按镜号顺序）。
  */
-export async function mergeEpisodeVideos(episodeId: number, dramaId: number, storyboardIds?: number[]): Promise<number> {
+export async function mergeEpisodeVideos(episodeId: number, dramaId: number, storyboardIds?: number[], opts: { trimSilence?: boolean } = {}): Promise<number> {
   let storyboards = await db.select().from(schema.storyboards)
     .where(eq(schema.storyboards.episodeId, episodeId))
     .orderBy(schema.storyboards.storyboardNumber)
@@ -74,7 +114,8 @@ export async function mergeEpisodeVideos(episodeId: number, dramaId: number, sto
   const mergeId = getInsertId(res)
 
   // 异步执行
-  doMerge(mergeId, episodeId, videos).catch(async err => {
+  const prompts = opts.trimSilence === false ? null : clips.map(c => c.sb.videoPrompt)
+  doMerge(mergeId, episodeId, videos, prompts).catch(async err => {
     logTaskError('MergeTask', 'episode-merge', { mergeId, episodeId, error: err.message })
     console.error(`[Merge] Failed:`, err)
     await db.update(schema.videoMerges)
@@ -85,14 +126,18 @@ export async function mergeEpisodeVideos(episodeId: number, dramaId: number, sto
   return mergeId
 }
 
-async function doMerge(mergeId: number, episodeId: number, videos: string[]) {
+async function doMerge(mergeId: number, episodeId: number, videos: string[], prompts: (string | null)[] | null = null) {
   // 生成 concat 列表文件
   const listDir = path.join(STORAGE_ROOT, 'temp')
   fs.mkdirSync(listDir, { recursive: true })
   const listPath = path.join(listDir, `${uuid()}.txt`)
 
+  // prompts === null means trimming is off
+  const cuts = await Promise.all(videos.map((v, i) => prompts ? trailingSilenceCut(toAbsPath(v), prompts[i]) : null))
+  const trimmed = cuts.filter(c => c !== null).length
+  if (trimmed) logTaskStart('MergeTask', 'trim-silence', { mergeId, clips: trimmed, cuts: cuts.map(c => c ?? '-').join(',') })
   const listContent = videos
-    .map(v => `file '${toAbsPath(v)}'`)
+    .map((v, i) => `file '${toAbsPath(v)}'${cuts[i] !== null ? `\noutpoint ${cuts[i]}` : ''}`)
     .join('\n')
   fs.writeFileSync(listPath, listContent, 'utf-8')
 

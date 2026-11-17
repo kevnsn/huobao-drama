@@ -808,7 +808,11 @@
       "durationHint": "修改即保存到分镜，列表与批量生成同步生效",
       "effective": "{model} · {res} · {dur}s",
       "boundRefs": "绑定参考图",
-      "noBoundRefs": "暂无绑定素材（在中间「参考素材」区点击绑定）"
+            "continuityMaster": "场景主画面",
+      "continuityPrev": "上一镜尾帧",
+      "continuityHint": "为保持连续性自动添加：本场景的主画面和上一镜头的最后一帧，本镜头会接着上一镜头的结尾继续。同一场景的镜头请按顺序生成。",
+      "continuityNone": "暂无连续性参考。先生成本场景的上一个镜头，本镜头就会从它的最后一帧接续。",
+"noBoundRefs": "暂无绑定素材（在中间「参考素材」区点击绑定）"
     },
     "tasks": {
       "title": "生成任务列表",

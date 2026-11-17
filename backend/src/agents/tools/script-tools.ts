@@ -45,10 +45,10 @@ const rewriteToScreenplay = createTool({
       instruction: `请将以下内容改写为格式化剧本。
 
 格式规范：
+- 开头先写角色表：「## Characters」小节，每个有台词或重要动作的角色一行「- 名字 — Appearance: 外貌。Styling: 造型。」
 - 场景头：## S编号 | 内景/外景 · 地点 | 时间段
 - 动作描写：自然段落，不包含镜头语言
 - 对白：角色名：（状态/表情）台词内容
-- 每个场景 30-60 秒内容
 
 ${instructions || ''}
 
@@ -67,6 +67,10 @@ const saveScript = createTool({
   execute: async ({ content }, context) => {
     const episodeId = getEpisodeId(context?.requestContext)
     if (!episodeId) return { error: 'Missing episodeId in request context' }
+    // Extraction reads looks from this sheet, so a script without it is not finished
+    if (!/^##\s*Characters\s*$/m.test(content)) {
+      return { error: 'Not saved. The script must open with a `## Characters` section before S01: one line per character who speaks or acts, `- Name — Appearance: <gender, age impression, ethnicity, build, face, bearing>. Styling: <hair, clothing with colors, accessories>.` Add it and call save_script again with the complete script.' }
+    }
     await db.update(schema.episodes)
       .set({ scriptContent: content, updatedAt: now() })
       .where(eq(schema.episodes.id, episodeId))

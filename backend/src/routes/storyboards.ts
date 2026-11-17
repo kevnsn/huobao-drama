@@ -4,6 +4,7 @@ import { db, getInsertId, schema } from '../db/index.js'
 import { success, created, now, badRequest } from '../utils/response.js'
 import { toSnakeCase } from '../utils/transform.js'
 import { logTaskPayload, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
+import { continuityReferences } from '../services/continuity.js'
 
 const app = new Hono()
 
@@ -160,6 +161,9 @@ app.put('/:id', async (c) => {
   })
   return success(c)
 })
+
+// GET /storyboards/:id/continuity — the extra reference images video generation adds for this shot
+app.get('/:id/continuity', async (c) => success(c, await continuityReferences(Number(c.req.param('id')))))
 
 // DELETE /storyboards/:id
 app.delete('/:id', async (c) => {

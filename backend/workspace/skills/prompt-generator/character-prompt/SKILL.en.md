@@ -24,6 +24,10 @@ the face, hairstyle, and clothing of the front-face close-up and the three views
 pure white background, soft even lighting, cinematic quality
 ```
 
+## Underwear View (only when `appearance` contains `Body:`)
+
+When the character's `appearance` has a `Body:` note, the sheet gains one more figure at the far right: **a fourth full-body front view of the same character wearing only fitted boxer briefs**, same height and alignment as the other three, same face and hairstyle, neutral A-pose. Describe the physique from the `Body:` note (build, muscle definition, skin, body hair, marks). Add to the output: "far right, a fourth equal-height front full-body view of the same character wearing only plain fitted boxer briefs, [physique from Body]; same face and hairstyle as the other views". Tasteful and neutral, like a fitness reference photo — nothing explicit. Characters without a `Body:` note get no such view.
+
 ## Description Order Rules
 
 Put the **most recognizable features first**, covering every key element of `appearance` (looks) and `styling` (hair/clothing/makeup) in this order, with no omissions:

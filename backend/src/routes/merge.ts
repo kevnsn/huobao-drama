@@ -15,16 +15,18 @@ app.post('/episodes/:id/merge', async (c) => {
   if (!ep) return badRequest(c, 'Episode not found')
 
   let storyboardIds: number[] | undefined
+  let trimSilence = true
   try {
     const body = await c.req.json()
     if (Array.isArray(body?.storyboard_ids)) {
       storyboardIds = body.storyboard_ids.map(Number).filter(Boolean)
     }
+    if (body?.trim_silence === false) trimSilence = false
   } catch { /* 无 body 时拼接全部 */ }
 
   try {
     logTaskStart('MergeAPI', 'episode-merge', { episodeId, dramaId: ep.dramaId, storyboardIds })
-    const mergeId = await mergeEpisodeVideos(episodeId, ep.dramaId, storyboardIds)
+    const mergeId = await mergeEpisodeVideos(episodeId, ep.dramaId, storyboardIds, { trimSilence })
     logTaskSuccess('MergeAPI', 'episode-merge', { episodeId, mergeId })
     return success(c, { merge_id: mergeId, status: 'processing' })
   } catch (err: any) {

@@ -910,7 +910,11 @@
       "durationHint": "Edits save to the storyboard instantly and apply to list and batch generation",
       "effective": "{model} · {res} · {dur}s",
       "boundRefs": "Bound References",
-      "noBoundRefs": "No bound assets (bind in the center \"References\" panel)"
+            "continuityMaster": "Scene master",
+      "continuityPrev": "Prev. last frame",
+      "continuityHint": "Added automatically for continuity: the scene's master frame and the last frame of the previous shot, so this shot picks up where that one ended. Generate a scene's shots in order.",
+      "continuityNone": "No continuity references yet. Generate the previous shot in this scene first, and this one will continue from its last frame.",
+"noBoundRefs": "No bound assets (bind in the center \"References\" panel)"
     },
     "tasks": {
       "title": "Generation Tasks",
